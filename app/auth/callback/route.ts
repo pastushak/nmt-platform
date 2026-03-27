@@ -27,28 +27,30 @@ export async function GET(request: Request) {
     const { data: { user }, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error && user) {
-      // Перевіряємо чи є профіль
       const { data: profile } = await supabase
         .from('users')
         .select('role, name')
         .eq('id', user.id)
         .single()
 
-      // Якщо профілю немає — створюємо як student
       if (!profile) {
+        // Новий учень — створюємо профіль БЕЗ імені, перенаправляємо на форму імені
         await supabase.from('users').insert({
           id: user.id,
-          name: user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'Учень',
+          name: '',
           email: user.email!,
           role: 'student',
           is_verified: false,
           is_active: true,
         })
-        // Новий учень → на головну (там побачить що не підтверджений)
-        return NextResponse.redirect(`${origin}/home`)
+        return NextResponse.redirect(`${origin}/setup-name`)
       }
 
-      // Існуючий юзер
+      // Якщо ім'я порожнє — знову на форму
+      if (!profile.name || profile.name.trim() === '') {
+        return NextResponse.redirect(`${origin}/setup-name`)
+      }
+
       return NextResponse.redirect(`${origin}/${profile.role === 'teacher' ? 'admin' : 'home'}`)
     }
   }
