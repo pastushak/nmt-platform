@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import LogoutButton from '@/components/ui/ui/LogoutButton'
+import LogoutButton from '@/components/ui/LogoutButton'
 
 export default async function TestsPage() {
   const supabase = createServerSupabaseClient()
@@ -10,7 +10,7 @@ export default async function TestsPage() {
 
   const { data: profile } = await supabase
     .from('users')
-    .select('name, role, last_seen_at')
+    .select('name, role, last_seen_at, is_verified')
     .eq('id', user.id)
     .single()
 
@@ -167,12 +167,18 @@ export default async function TestsPage() {
                       )}
 
                       {variant.is_published ? (
-                        <Link
-                          href={`/test/${variant.id}`}
-                          className="btn-primary text-xs py-2 px-4"
-                        >
-                          {attemptCount === 0 ? '▶ Пройти' : '▶ Ще раз'}
-                        </Link>
+                        profile?.is_verified ? (
+                          <Link
+                            href={`/test/${variant.id}`}
+                            className="btn-primary text-xs py-2 px-4"
+                          >
+                            {attemptCount === 0 ? '▶ Пройти' : '▶ Ще раз'}
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-orange-500 bg-orange-50 border border-orange-200 px-3 py-2 rounded-xl font-medium">
+                            ⏳ Не підтверджено
+                          </span>
+                        )
                       ) : (
                         <span className="text-xs text-[#9e9e9e] bg-[#f5f5f5] px-4 py-2 rounded-xl">
                           Недоступно

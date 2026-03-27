@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import LogoutButton from '@/components/ui/ui/LogoutButton'
+import LogoutButton from '@/components/ui/LogoutButton'
 
 export default async function HomePage() {
   const supabase = createServerSupabaseClient()

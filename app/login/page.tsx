@@ -9,6 +9,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const isBlocked = typeof window !== 'undefined' && 
+    new URLSearchParams(window.location.search).get('blocked') === '1'
   const [loading, setLoading] = useState(false)
 
   async function handleLogin(e: React.FormEvent) {
@@ -91,6 +93,12 @@ export default function LoginPage() {
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
                 {error}
+              </div>
+            )}
+
+            {isBlocked && (
+              <div className="bg-orange-50 border border-orange-200 text-orange-700 px-4 py-3 rounded-xl text-sm">
+                ⚠️ Ваш акаунт деактивовано. Зверніться до викладача.
               </div>
             )}
 
