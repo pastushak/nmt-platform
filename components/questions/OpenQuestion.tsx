@@ -2,6 +2,7 @@
 
 import { OpenQuestion } from '@/lib/types'
 import MathText from '@/components/ui/MathText'
+import ImageViewer from '@/components/ui/ImageViewer'
 
 interface Props {
   question: OpenQuestion
@@ -17,7 +18,7 @@ export default function OpenQuestionComponent({ question, answer, onChange, show
       <MathText text={question.text} className="text-[#1a2e1a] text-base" />
 
       {question.image_url && (
-        <img src={question.image_url} alt="" className="max-w-full rounded-xl border border-[#e8ede8]" />
+        <ImageViewer url={question.image_url} />
       )}
 
       <div>

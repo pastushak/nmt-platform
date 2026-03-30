@@ -2,6 +2,7 @@
 
 import { SingleQuestion } from '@/lib/types'
 import MathText from '@/components/ui/MathText'
+import ImageViewer from '@/components/ui/ImageViewer'
 
 const OPTIONS = ['А', 'Б', 'В', 'Г', 'Д'] as const
 
@@ -18,8 +19,7 @@ export default function SingleQuestionComponent({ question, answer, onChange, sh
       <MathText text={question.text} className="text-[#1a2e1a] text-base leading-relaxed" />
 
       {question.image_url && (
-        <img src={question.image_url} alt="Зображення до питання"
-          className="max-w-full rounded-xl border border-[#e8ede8]" />
+        <ImageViewer url={question.image_url} />
       )}
 
       <div className="space-y-2 mt-2">

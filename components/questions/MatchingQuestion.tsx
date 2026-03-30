@@ -2,6 +2,7 @@
 
 import { MatchingQuestion } from '@/lib/types'
 import MathText from '@/components/ui/MathText'
+import ImageViewer from '@/components/ui/ImageViewer'
 
 interface Props {
   question: MatchingQuestion
@@ -24,7 +25,7 @@ export default function MatchingQuestionComponent({ question, answer, onChange, 
       <MathText text={question.text} className="text-[#1a2e1a] text-base" />
 
       {question.image_url && (
-        <img src={question.image_url} alt="" className="max-w-full rounded-xl border border-[#e8ede8]" />
+        <ImageViewer url={question.image_url} />
       )}
 
       <p className="text-xs text-[#7a9a7a] italic">

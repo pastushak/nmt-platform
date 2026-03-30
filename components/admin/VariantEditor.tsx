@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Question, Variant } from '@/lib/types'
 import MathText from '@/components/ui/MathText'
+import ImageUpload from '@/components/ui/ImageUpload'
 
 const SLOTS = Array.from({ length: 22 }, (_, i) => i + 1)
 
@@ -311,10 +312,11 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
             <input type="text" value={topic} onChange={e => setTopic(e.target.value)}
               className="input" placeholder="Алгебра, Геометрія..." />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-[#445544] mb-1.5">URL зображення</label>
-            <input type="url" value={imageUrl} onChange={e => setImageUrl(e.target.value)}
-              className="input" placeholder="https://..." />
+          <div className="col-span-2">
+            <ImageUpload
+              currentUrl={imageUrl || null}
+              onUpload={(url) => setImageUrl(url ?? '')}
+            />
           </div>
         </div>
 
