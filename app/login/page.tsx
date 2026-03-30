@@ -33,7 +33,7 @@ export default function LoginPage() {
     if (!user) return
 
     const { data: profile } = await supabase
-      .from('users').select('role').eq('id', user.id).single()
+      .rpc('get_my_profile')
 
     router.push(profile?.role === 'teacher' ? '/admin' : '/home')
     router.refresh()
@@ -169,3 +169,4 @@ export default function LoginPage() {
     </div>
   )
 }
+

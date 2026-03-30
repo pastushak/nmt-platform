@@ -10,7 +10,7 @@ export default async function VariantsPage() {
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase
-    .from('users').select('role').eq('id', user.id).single()
+    .rpc('get_my_profile')
   if (profile?.role !== 'teacher') redirect('/home')
 
   const { data: variants } = await supabase
@@ -127,3 +127,4 @@ export default async function VariantsPage() {
     </div>
   )
 }
+

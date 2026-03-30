@@ -14,8 +14,7 @@ export default async function StudentDetailPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
-    .from('users').select('role').eq('id', user.id).single()
+  const { data: profile } = await supabase.rpc('get_my_profile')
   if (profile?.role !== 'teacher') redirect('/home')
 
   const { data: student } = await supabase
