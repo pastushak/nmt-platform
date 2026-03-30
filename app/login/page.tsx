@@ -42,12 +42,21 @@ export default function LoginPage() {
   async function handleGoogle() {
     setGoogleLoading(true)
     const supabase = createClient()
-    await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        skipBrowserRedirect: true,
       },
     })
+    if (error) {
+      console.error('Error:', error)
+      setGoogleLoading(false)
+      return
+    }
+    if (data?.url) {
+      window.location.replace(data.url)
+    }
   }
 
   return (
@@ -77,6 +86,7 @@ export default function LoginPage() {
 
           {/* Google кнопка */}
           <button
+            type="button"
             onClick={handleGoogle}
             disabled={googleLoading}
             className="w-full flex items-center justify-center gap-3 bg-white border-2 border-[#e8ede8] hover:border-[#0ead69] hover:bg-[#f8fef9] text-[#1a2e1a] font-semibold py-2.5 px-5 rounded-xl transition-all mb-4 disabled:opacity-50"
