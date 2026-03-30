@@ -1,8 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export const runtime = 'nodejs'
-
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
 
@@ -29,21 +27,12 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
-  if (pathname === '/login' || pathname.startsWith('/auth') || pathname === '/setup-name') return response
-  if (!user) return NextResponse.redirect(new URL('/login', request.url))
+  if (pathname === '/login' || pathname.startsWith('/auth') || pathname === '/setup-name') {
+    return response
+  }
 
-  // Перевірка чи учень активний
-  if (user) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('is_active, role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile && !profile.is_active && profile.role === 'student') {
-      await supabase.auth.signOut()
-      return NextResponse.redirect(new URL('/login?blocked=1', request.url))
-    }
+  if (!user) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   return response
