@@ -111,7 +111,13 @@ export default async function StudentsPage() {
                       <td className="px-4 py-3 text-center font-bold text-[#2e7d32] text-sm">{s?.best ?? '—'}</td>
                       <td className="px-4 py-3 text-center font-bold text-[#0ead69] text-sm">{s?.last ?? '—'}</td>
                       <td className="px-4 py-3">
-                        <StudentActions student={student} />
+                        <div className="flex items-center gap-2">
+                          <Link href={`/admin/students/${student.id}`}
+                            className="text-xs text-[#0ead69] font-semibold hover:text-[#0c9a5a]">
+                            Детальніше →
+                          </Link>
+                          <StudentActions student={student} />
+                        </div>
                       </td>
                     </tr>
                   )
