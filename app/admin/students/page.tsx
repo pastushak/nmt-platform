@@ -49,6 +49,7 @@ export default async function StudentsPage() {
               <Link href="/admin" className="nav-link">Дашборд</Link>
               <Link href="/admin/variants" className="nav-link">Варіанти</Link>
               <Link href="/admin/students" className="nav-link-active">Учні</Link>
+              <Link href="/admin/materials" className="nav-link">Матеріали</Link>
             </nav>
           </div>
           <AddStudentButton />

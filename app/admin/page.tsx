@@ -159,9 +159,10 @@ export default async function AdminPage() {
         {/* Швидкі дії */}
         <div className="card">
           <h2 className="font-bold text-[#1a2e1a] mb-4">Швидкі дії</h2>
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <Link href="/admin/variants/new" className="btn-primary">+ Новий варіант</Link>
             <Link href="/admin/students" className="btn-secondary">👥 Учні</Link>
+            <Link href="/admin/materials" className="btn-secondary">📚 Матеріали</Link>
           </div>
         </div>
 
