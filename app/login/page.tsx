@@ -35,8 +35,7 @@ export default function LoginPage() {
     const { data: profile } = await supabase
       .rpc('get_my_profile')
 
-    router.push(profile?.role === 'teacher' ? '/admin' : '/home')
-    router.refresh()
+    window.location.href = profile?.role === 'teacher' ? '/admin' : '/home'
   }
 
   async function handleGoogle() {
