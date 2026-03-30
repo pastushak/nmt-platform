@@ -1,7 +1,7 @@
 'use client'
 
 import { MatchingQuestion } from '@/lib/types'
-import MathText from '@/components/ui/ui/MathText'
+import MathText from '@/components/ui/MathText'
 
 interface Props {
   question: MatchingQuestion

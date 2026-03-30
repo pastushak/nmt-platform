@@ -8,11 +8,33 @@ export default async function TestsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profile } = await supabase
+  const { data: profile } = await supabase.rpc('get_my_profile')
+
+  console.log('PROFILE:', JSON.stringify(profile))
+
+  if (profile?.role === 'teacher') redirect('/admin')
+
+  const { data: directCheck, error: directError } = await supabase
+  .from('users')
+  .select('*')
+  .eq('id', '53ae1ede-efb6-412c-be4d-d3297b36aef7')
+  .single()
+  console.log('DIRECT:', JSON.stringify(directCheck), 'ERROR:', JSON.stringify(directError))
+
+  try {
+  const { data: directCheck, error: directError } = await supabase
     .from('users')
-    .select('name, role, last_seen_at, is_verified')
-    .eq('id', user.id)
+    .select('*')
+    .eq('id', '53ae1ede-efb6-412c-be4d-d3297b36aef7')
     .single()
+  console.log('DIRECT:', JSON.stringify(directCheck), 'ERROR:', JSON.stringify(directError))
+    } catch(e) {
+  console.log('CATCH ERROR:', e)
+    }
+
+  console.log('USER ID TYPE:', typeof user.id, 'LENGTH:', user.id.length)
+  console.log('HARDCODED LENGTH:', '53ae1ede-efb6-412c-be4d-d3297b36aef7'.length)
+  console.log('EQUAL:', user.id === '53ae1ede-efb6-412c-be4d-d3297b36aef7')
 
   if (profile?.role === 'teacher') redirect('/admin')
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { SingleQuestion } from '@/lib/types'
-import MathText from '@/components/ui/ui/MathText'
+import MathText from '@/components/ui/MathText'
 
 const OPTIONS = ['А', 'Б', 'В', 'Г', 'Д'] as const
 

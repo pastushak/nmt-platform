@@ -62,7 +62,7 @@ export default function ResultsClient({ attempt, questions, answers }: any) {
           </div>
 
           {/* Блоки балів */}
-          <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
+          {/* <div className="grid grid-cols-3 gap-3 max-w-md mx-auto">
             {[
               { label: 'Вибір відповіді', score: attempt.score_single, max: MAX_SCORES.single },
               { label: 'Відповідності', score: attempt.score_matching, max: MAX_SCORES.matching },
@@ -75,11 +75,11 @@ export default function ResultsClient({ attempt, questions, answers }: any) {
                 <div className="text-xs text-[#7a9a7a] mt-1">{label}</div>
               </div>
             ))}
-          </div>
+          </div> */}
         </div>
 
         {/* Розбір питань */}
-        <div>
+        {/* <div>
           <h3 className="font-bold text-[#1a2e1a] mb-4 text-lg">📋 Розбір відповідей</h3>
           <div className="space-y-4">
             {questions.map((question: any) => {
@@ -141,7 +141,7 @@ export default function ResultsClient({ attempt, questions, answers }: any) {
               )
             })}
           </div>
-        </div>
+        </div> */}
 
         {/* Дії */}
         <div className="flex gap-4 justify-center pb-8">

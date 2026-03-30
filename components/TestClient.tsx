@@ -1,15 +1,15 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Question, Variant } from '@/lib/types'
 import { calculateAttemptScore } from '@/lib/scoring'
 import Timer from '@/components/ui/Timer'
-import MathText from '@/components/ui/MathText'
 import SingleQuestionComponent from '@/components/questions/SingleQuestion'
 import MatchingQuestionComponent from '@/components/questions/MatchingQuestion'
 import OpenQuestionComponent from '@/components/questions/OpenQuestion'
+import TestInstructionModal from '@/components/TestInstructionModal'
 import toast, { Toaster } from 'react-hot-toast'
 
 interface Props {
@@ -33,31 +33,27 @@ export default function TestClient({ variant, questions, userId }: Props) {
   const [current, setCurrent] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showInstruction, setShowInstruction] = useState(true)
   const supabase = createClient()
   const saveTimer = useRef<NodeJS.Timeout>()
 
-  // Створюємо спробу
-  useEffect(() => {
-    async function createAttempt() {
-      const { data } = await supabase
-        .from('attempts')
-        .insert({
-          student_id: userId,
-          variant_id: variant.id,
-          started_at: new Date().toISOString(),
-          status: 'in_progress',
-        })
-        .select('id')
-        .single()
-      if (data) {
-        setAttemptId(data.id)
-        setStartedAt(Date.now())
-      }
+  async function createAttempt() {
+    const { data } = await supabase
+      .from('attempts')
+      .insert({
+        student_id: userId,
+        variant_id: variant.id,
+        started_at: new Date().toISOString(),
+        status: 'in_progress',
+      })
+      .select('id')
+      .single()
+    if (data) {
+      setAttemptId(data.id)
+      setStartedAt(Date.now())
     }
-    createAttempt()
-  }, [])
+  }
 
-  // Збереження відповіді
   const saveAnswer = useCallback(async (questionId: string, answerData: AnswerState) => {
     if (!attemptId) return
     await supabase.from('answers').upsert({
@@ -86,12 +82,10 @@ export default function TestClient({ variant, questions, userId }: Props) {
   function handleOpen(qId: string, value: string) {
     const a: AnswerState = { type: 'open', answer_open: value }
     setAnswers(prev => ({ ...prev, [qId]: a }))
-    // Зберігаємо через 1 секунду після зупинки друку
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => saveAnswer(qId, a), 1000)
   }
 
-  // Сповіщення таймера
   function handleWarning(minutesLeft: number) {
     if (minutesLeft === 10) {
       toast('⏰ Залишилось 10 хвилин', {
@@ -111,7 +105,6 @@ export default function TestClient({ variant, questions, userId }: Props) {
     }
   }
 
-  // Завершення спроби
   async function handleSubmit() {
     if (!attemptId || submitting) return
     setSubmitting(true)
@@ -145,7 +138,6 @@ export default function TestClient({ variant, questions, userId }: Props) {
     router.push(`/results/${attemptId}`)
   }
 
-  // Кількість відповідей
   const answeredCount = questions.filter(q => {
     const a = answers[q.id]
     if (!a) return false
@@ -161,25 +153,33 @@ export default function TestClient({ variant, questions, userId }: Props) {
     <div className="min-h-screen bg-[#f5f7f5] flex flex-col">
       <Toaster position="top-center" />
 
+      {/* Інструкція перед тестом */}
+      {showInstruction && (
+        <TestInstructionModal
+          variantTitle={variant.title}
+          timeLimit={variant.time_limit}
+          onStart={() => {
+            setShowInstruction(false)
+            createAttempt()
+          }}
+        />
+      )}
+
       {/* Шапка тесту */}
       <header className="bg-white border-b border-[#e8ede8] sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
-
-          {/* Назва */}
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-[#1a2e1a] text-sm truncate">{variant.title}</p>
             <p className="text-xs text-[#7a9a7a]">відповіді: {answeredCount}/{questions.length}</p>
           </div>
 
-          {/* Таймер */}
           <Timer
             startedAt={startedAt}
             timeLimitMin={variant.time_limit}
             onWarning={handleWarning}
           />
 
-          {/* Матеріали */}
-          
+          <a
             href="/materials"
             target="_blank"
             rel="noopener noreferrer"
@@ -188,7 +188,6 @@ export default function TestClient({ variant, questions, userId }: Props) {
             📚 Матеріали
           </a>
 
-          {/* Завершити */}
           <button
             onClick={() => setShowConfirm(true)}
             disabled={submitting}
@@ -198,7 +197,6 @@ export default function TestClient({ variant, questions, userId }: Props) {
           </button>
         </div>
 
-        {/* Навігація по питаннях */}
         <div className="max-w-4xl mx-auto px-4 pb-3 flex gap-1.5 flex-wrap">
           {questions.map((question, i) => {
             const a = answers[question.id]
@@ -226,7 +224,6 @@ export default function TestClient({ variant, questions, userId }: Props) {
         </div>
       </header>
 
-      {/* Питання */}
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6">
         {q && (
           <div className="card">
@@ -271,7 +268,6 @@ export default function TestClient({ variant, questions, userId }: Props) {
           </div>
         )}
 
-        {/* Навігація */}
         <div className="flex justify-between mt-4">
           <button
             onClick={() => setCurrent(p => Math.max(0, p - 1))}
@@ -290,7 +286,6 @@ export default function TestClient({ variant, questions, userId }: Props) {
         </div>
       </main>
 
-      {/* Модальне підтвердження */}
       {showConfirm && (
         <div
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
