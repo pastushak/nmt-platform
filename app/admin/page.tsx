@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import LogoutButton from '@/components/ui/LogoutButton'
+import AdminHeader from '@/components/admin/AdminHeader'
 
 export default async function AdminPage() {
   const supabase = createServerSupabaseClient()
@@ -43,39 +44,12 @@ export default async function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7f5]">
+    <div className="min-h-screen bg-[#f5f7f5] w-full overflow-x-hidden">
 
       {/* Навігація */}
-      <header className="bg-white border-b border-[#e8ede8]">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-[#0ead69] rounded-lg flex items-center justify-center">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M8 1L2 4.5v5c0 3.8 2.5 6.5 6 7.5 3.5-1 6-3.7 6-7.5v-5L8 1z" fill="white"/>
-                </svg>
-              </div>
-              <div>
-                <div className="font-bold text-[#1a2e1a] text-sm">НМТ Математика</div>
-                <div className="text-[#7a9a7a] text-xs">Панель викладача</div>
-              </div>
-            </div>
-            <span className="text-[#c8e6c9]">|</span>
-            <nav className="flex gap-1">
-              <Link href="/admin" className="nav-link-active">Дашборд</Link>
-              <Link href="/admin/variants" className="nav-link">Варіанти</Link>
-              <Link href="/admin/students" className="nav-link">Учні</Link>
-              <Link href="/materials" className="nav-link">Матеріали</Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-[#445544] font-medium hidden sm:block">{profile?.name}</span>
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
+      <AdminHeader currentPage="dashboard" userName={profile?.name} />
 
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+      <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
 
         <div>
           <h1 className="page-title mb-1">Дашборд</h1>
@@ -83,7 +57,7 @@ export default async function AdminPage() {
         </div>
 
         {/* Зведені показники */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { label: 'Варіантів', value: variantsCount ?? 0, color: 'text-[#0ead69]' },
             { label: 'Учнів', value: studentsCount ?? 0, color: 'text-[#1565c0]' },
@@ -96,7 +70,7 @@ export default async function AdminPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
           {/* Статистика по варіантах */}
           <div className="card">

@@ -106,3 +106,12 @@ body {
     @apply text-sm font-bold text-[#1a2e1a] tracking-tight;
   }
 }
+
+html {
+  overflow-x: hidden;
+}
+
+body {
+  overflow-x: hidden;
+  width: 100%;
+}

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import StudentDetailCharts from '@/components/admin/StudentDetailCharts'
 import DeleteAttemptButton from '@/components/admin/DeleteAttemptButton'
+import AdminHeader from '@/components/admin/AdminHeader'
 
 export const revalidate = 0
 export default async function StudentDetailPage({
@@ -98,17 +99,7 @@ export default async function StudentDetailPage({
 
   return (
     <div className="min-h-screen bg-[#f5f7f5]">
-      <header className="bg-white border-b border-[#e8ede8]">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center gap-4">
-          <Link href="/admin/students" className="text-sm text-[#7a9a7a] hover:text-[#1a2e1a]">← Учні</Link>
-          <span className="text-[#c8e6c9]">|</span>
-          <nav className="flex gap-1">
-            <Link href="/admin" className="nav-link">Дашборд</Link>
-            <Link href="/admin/variants" className="nav-link">Варіанти</Link>
-            <Link href="/admin/students" className="nav-link">Учні</Link>
-          </nav>
-        </div>
-      </header>
+      <AdminHeader currentPage="dashboard" userName={profile?.name} />
 
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
 

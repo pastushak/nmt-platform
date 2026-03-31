@@ -12,14 +12,6 @@ export default async function TestsPage() {
 
   if (profile?.role === 'teacher') redirect('/admin')
 
-  const { data: directCheck, error: directError } = await supabase
-  .from('users')
-  .select('*')
-  .eq('id', '53ae1ede-efb6-412c-be4d-d3297b36aef7')
-  .single()
-
-  if (profile?.role === 'teacher') redirect('/admin')
-
   // Всі варіанти (і опубліковані і ні)
   const { data: allVariants } = await supabase
     .from('variants')

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import StudentActions from '@/components/admin/StudentActions'
 import AddStudentButton from '@/components/admin/AddStudentButton'
+import AdminHeader from '@/components/admin/AdminHeader'
 
 export default async function StudentsPage() {
   const supabase = createServerSupabaseClient()
@@ -40,23 +41,9 @@ export default async function StudentsPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f7f5]">
-      <header className="bg-white border-b border-[#e8ede8]">
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/admin" className="text-sm text-[#7a9a7a] hover:text-[#1a2e1a]">← Дашборд</Link>
-            <span className="text-[#c8e6c9]">|</span>
-            <nav className="flex gap-1">
-              <Link href="/admin" className="nav-link">Дашборд</Link>
-              <Link href="/admin/variants" className="nav-link">Варіанти</Link>
-              <Link href="/admin/students" className="nav-link-active">Учні</Link>
-              <Link href="/materials" className="nav-link">Матеріали</Link>
-            </nav>
-          </div>
-          <AddStudentButton />
-        </div>
-      </header>
+      <AdminHeader currentPage="dashboard" userName={profile?.name} />
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-8">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="page-title mb-1">Учні</h1>
