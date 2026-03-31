@@ -65,6 +65,7 @@ export default async function AdminPage() {
               <Link href="/admin" className="nav-link-active">Дашборд</Link>
               <Link href="/admin/variants" className="nav-link">Варіанти</Link>
               <Link href="/admin/students" className="nav-link">Учні</Link>
+              <Link href="/materials" className="nav-link">Матеріали</Link>
             </nav>
           </div>
           <div className="flex items-center gap-3">
@@ -162,7 +163,7 @@ export default async function AdminPage() {
           <div className="flex gap-3 flex-wrap">
             <Link href="/admin/variants/new" className="btn-primary">+ Новий варіант</Link>
             <Link href="/admin/students" className="btn-secondary">👥 Учні</Link>
-            <Link href="/admin/materials" className="btn-secondary">📚 Матеріали</Link>
+            <Link href="/materials" className="btn-secondary">📚 Матеріали</Link>
           </div>
         </div>
 

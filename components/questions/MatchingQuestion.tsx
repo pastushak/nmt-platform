@@ -15,8 +15,25 @@ export default function MatchingQuestionComponent({ question, answer, onChange, 
   function handleSelect(leftId: string, rightId: string) {
     if (showResult) return
     const next = { ...answer }
-    if (next[leftId] === rightId) delete next[leftId]
-    else next[leftId] = rightId
+    
+    // Якщо клікнули на вже вибраний — скасовуємо
+    if (next[leftId] === rightId) {
+      delete next[leftId]
+      onChange(next)
+      return
+    }
+    
+    // Перевіряємо чи цей rightId вже використаний іншим leftId
+    const alreadyUsedBy = Object.entries(next).find(
+      ([lid, rid]) => rid === rightId && lid !== leftId
+    )
+    
+    if (alreadyUsedBy) {
+      // Знімаємо з попереднього leftId
+      delete next[alreadyUsedBy[0]]
+    }
+    
+    next[leftId] = rightId
     onChange(next)
   }
 

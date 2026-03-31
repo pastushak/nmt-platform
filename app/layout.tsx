@@ -17,3 +17,8 @@ export default function RootLayout({
     </html>
   )
 }
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1.25,
+}

@@ -77,7 +77,7 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
   return (
     <div className="space-y-6">
 
-      {/* Панель дій */}
+      {/* Кнопки дій */}
       <div className="flex gap-3">
         <button onClick={() => setShowImport(!showImport)} className="btn-secondary text-sm">
           📥 Імпорт JSON
@@ -106,8 +106,8 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
       {/* Блок 1 */}
       <div className="card">
         <div className="flex items-center gap-2 mb-4">
-          <span className="bg-[#e8f5e9] text-[#2e7d32] text-xs font-bold px-3 py-1 rounded-full">Блок 1</span>
-          <span className="font-bold text-[#1a2e1a]">Питання 1–15 — Вибір відповіді (max 15 балів)</span>
+          <span className="bg-[#e8f5e9] text-[#2e7d32] text-xs font-bold px-2.5 py-1 rounded-full">Блок 1</span>
+          <h3 className="font-bold text-[#1a2e1a]">Питання 1–15 · Вибір однієї правильної (max 15 балів)</h3>
         </div>
         <div className="space-y-2">
           {SLOTS.filter(n => n <= 15).map(num => (
@@ -120,8 +120,8 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
       {/* Блок 2 */}
       <div className="card">
         <div className="flex items-center gap-2 mb-4">
-          <span className="bg-[#e3f2fd] text-[#1565c0] text-xs font-bold px-3 py-1 rounded-full">Блок 2</span>
-          <span className="font-bold text-[#1a2e1a]">Питання 16–18 — Відповідності (max 9 балів)</span>
+          <span className="bg-[#e3f2fd] text-[#1565c0] text-xs font-bold px-2.5 py-1 rounded-full">Блок 2</span>
+          <h3 className="font-bold text-[#1a2e1a]">Питання 16–18 · Відповідності (max 9 балів)</h3>
         </div>
         <div className="space-y-2">
           {SLOTS.filter(n => n >= 16 && n <= 18).map(num => (
@@ -134,8 +134,8 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
       {/* Блок 3 */}
       <div className="card">
         <div className="flex items-center gap-2 mb-4">
-          <span className="bg-[#fff8e1] text-[#f57f17] text-xs font-bold px-3 py-1 rounded-full">Блок 3</span>
-          <span className="font-bold text-[#1a2e1a]">Питання 19–22 — Вписати відповідь (max 8 балів)</span>
+          <span className="bg-[#fff8e1] text-[#f57f17] text-xs font-bold px-2.5 py-1 rounded-full">Блок 3</span>
+          <h3 className="font-bold text-[#1a2e1a]">Питання 19–22 · Вписати відповідь (max 8 балів)</h3>
         </div>
         <div className="space-y-2">
           {SLOTS.filter(n => n >= 19).map(num => (
@@ -145,38 +145,60 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
         </div>
       </div>
 
-      {/* Форма редагування */}
+      {/* Модальне вікно редагування */}
       {activeSlot !== null && (
-        <QuestionForm
-          variantId={variant.id}
-          num={activeSlot}
-          type={getType(activeSlot)}
-          existing={getQuestion(activeSlot)}
-          onSave={q => {
-            setQuestions(prev => [...prev.filter(x => x.number !== q.number), q]
-              .sort((a, b) => a.number - b.number))
-            setActiveSlot(null)
-            router.refresh()
-          }}
-          onCancel={() => setActiveSlot(null)}
-        />
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto"
+          onClick={() => setActiveSlot(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <QuestionForm
+              key={activeSlot}
+              variantId={variant.id}
+              num={activeSlot}
+              type={getType(activeSlot)}
+              existing={getQuestion(activeSlot)}
+              onSave={q => {
+                setQuestions(prev => [...prev.filter(x => x.number !== q.number), q]
+                  .sort((a, b) => a.number - b.number))
+                setActiveSlot(null)
+                router.refresh()
+              }}
+              onCancel={() => setActiveSlot(null)}
+            />
+          </div>
+        </div>
       )}
 
       {/* JSON довідка */}
-      <div className="card bg-[#f8faf8]">
-        <h3 className="font-bold text-[#1a2e1a] mb-3">📖 Формат JSON</h3>
+      <div className="card bg-[#f8faf8] border-[#e8ede8]">
+        <h3 className="font-bold text-[#1a2e1a] mb-3">📖 Формат JSON для імпорту</h3>
         <div className="space-y-3 text-xs font-mono">
           <div>
-            <p className="text-[#7a9a7a] mb-1">// Single (1–15):</p>
-            <pre className="bg-white border border-[#e8ede8] rounded-lg p-3 overflow-x-auto">{`{"number":1,"type":"single","topic":"Алгебра","text":"Умова $$x^2$$","options":{"А":"1","Б":"2","В":"3","Г":"4","Д":"5"},"correct_single":"В"}`}</pre>
+            <p className="text-[#7a9a7a] mb-1">// Тип single (1–15):</p>
+            <pre className="bg-white border border-[#e8ede8] rounded-xl p-3 overflow-x-auto text-[#1a2e1a]">{`{ "number": 1, "type": "single", "topic": "Алгебра",
+  "text": "Знайдіть $$x^2+2x$$ при x=3",
+  "options": {"А":"9","Б":"12","В":"15","Г":"18","Д":"21"},
+  "correct_single": "Г" }`}</pre>
           </div>
           <div>
-            <p className="text-[#7a9a7a] mb-1">// Matching (16–18):</p>
-            <pre className="bg-white border border-[#e8ede8] rounded-lg p-3 overflow-x-auto">{`{"number":16,"type":"matching","topic":"Функції","text":"Встановіть відповідність","left_items":[{"id":"1","text":"y=x²"},{"id":"2","text":"y=x"},{"id":"3","text":"y=1/x"}],"right_items":[{"id":"А","text":"пряма"},{"id":"Б","text":"гіпербола"},{"id":"В","text":"парабола"},{"id":"Г","text":"коло"},{"id":"Д","text":"синусоїда"}],"correct_matching":{"1":"В","2":"А","3":"Б"}}`}</pre>
+            <p className="text-[#7a9a7a] mb-1">// Тип matching (16–18):</p>
+            <pre className="bg-white border border-[#e8ede8] rounded-xl p-3 overflow-x-auto text-[#1a2e1a]">{`{ "number": 16, "type": "matching", "topic": "Функції",
+  "text": "Встановіть відповідність",
+  "left_items": [{"id":"1","text":"y=x²"},{"id":"2","text":"y=x"},{"id":"3","text":"y=1/x"}],
+  "right_items": [{"id":"А","text":"пряма"},{"id":"Б","text":"гіпербола"},
+    {"id":"В","text":"парабола"},{"id":"Г","text":"коло"},{"id":"Д","text":"синусоїда"}],
+  "correct_matching": {"1":"В","2":"А","3":"Б"} }`}</pre>
           </div>
           <div>
-            <p className="text-[#7a9a7a] mb-1">// Open (19–22):</p>
-            <pre className="bg-white border border-[#e8ede8] rounded-lg p-3 overflow-x-auto">{`{"number":19,"type":"open","topic":"Рівняння","text":"Розв'яжіть $$2x-6=0$$","correct_open":"3","accepted_answers":["3","3.0"]}`}</pre>
+            <p className="text-[#7a9a7a] mb-1">// Тип open (19–22):</p>
+            <pre className="bg-white border border-[#e8ede8] rounded-xl p-3 overflow-x-auto text-[#1a2e1a]">{`{ "number": 19, "type": "open", "topic": "Рівняння",
+  "text": "Розвяжіть $$2x-6=0$$",
+  "correct_open": "3",
+  "accepted_answers": ["3", "3.0"] }`}</pre>
           </div>
         </div>
       </div>
@@ -191,11 +213,11 @@ function QuestionSlot({ num, question, onEdit, onDelete }: {
   onDelete: (id: string) => void
 }) {
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-xl border ${
-      question ? 'border-[#c8e6c9] bg-[#f0faf2]' : 'border-[#e8ede8] bg-white'
+    <div className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+      question ? 'border-[#c8e6c9] bg-[#f8fef9]' : 'border-[#e8ede8] bg-white'
     }`}>
       <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-        question ? 'bg-[#0ead69] text-white' : 'bg-[#f5f5f5] text-[#9e9e9e]'
+        question ? 'bg-[#0ead69] text-white' : 'bg-[#f5f7f5] text-[#7a9a7a]'
       }`}>{num}</span>
       <div className="flex-1 min-w-0">
         {question ? (
@@ -206,15 +228,15 @@ function QuestionSlot({ num, question, onEdit, onDelete }: {
             <p className="text-xs text-[#7a9a7a]">{question.topic}</p>
           </div>
         ) : (
-          <p className="text-sm text-[#9e9e9e] italic">Питання не додано</p>
+          <p className="text-sm text-[#aec5ae] italic">Питання не додано</p>
         )}
       </div>
       <div className="flex gap-2 flex-shrink-0">
-        <button onClick={onEdit} className="text-[#0ead69] hover:text-[#0c9a5a] text-sm font-semibold">
+        <button onClick={onEdit} className="text-xs font-semibold text-[#0ead69] hover:text-[#0c9a5a]">
           {question ? 'Змінити' : '+ Додати'}
         </button>
         {question && (
-          <button onClick={() => onDelete(question.id)} className="text-red-400 hover:text-red-600 text-sm">
+          <button onClick={() => onDelete(question.id)} className="text-xs text-red-400 hover:text-red-600">
             Видалити
           </button>
         )}
@@ -242,8 +264,7 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
     { id: '1', text: '' }, { id: '2', text: '' }, { id: '3', text: '' }
   ])
   const [rightItems, setRightItems] = useState((existing as any)?.right_items ?? [
-    { id: 'А', text: '' }, { id: 'Б', text: '' }, { id: 'В', text: '' },
-    { id: 'Г', text: '' }, { id: 'Д', text: '' }
+    { id: 'А', text: '' }, { id: 'Б', text: '' }, { id: 'В', text: '' }, { id: 'Г', text: '' }, { id: 'Д', text: '' }
   ])
   const [correctMatching, setCorrectMatching] = useState<Record<string, string>>(
     (existing as any)?.correct_matching ?? { '1': 'А', '2': 'Б', '3': 'В' }
@@ -283,21 +304,37 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
   }
 
   return (
-    <div className="card border-2 border-[#0ead69]">
-      <h3 className="font-bold text-[#1a2e1a] mb-5">
-        ✏️ Питання {num} — {type === 'single' ? 'Вибір відповіді' : type === 'matching' ? 'Відповідності' : 'Вписати відповідь'}
-      </h3>
+    <div className="p-6">
+      {/* Заголовок модалки */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <span className="w-10 h-10 rounded-xl bg-[#0ead69] text-white flex items-center justify-center font-bold">
+            {num}
+          </span>
+          <div>
+            <h3 className="font-bold text-[#1a2e1a]">
+              {type === 'single' ? 'Вибір відповіді' : type === 'matching' ? 'Відповідності' : 'Вписати відповідь'}
+            </h3>
+            <p className="text-xs text-[#7a9a7a]">
+              {type === 'single' ? '1 бал' : type === 'matching' ? 'до 3 балів' : '2 бали'}
+            </p>
+          </div>
+        </div>
+        <button onClick={onCancel} className="text-[#7a9a7a] hover:text-[#1a2e1a] text-xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f5f7f5]">
+          ✕
+        </button>
+      </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+
+        {/* Текст питання */}
         <div>
           <label className="block text-sm font-medium text-[#445544] mb-1.5">
             Умова задачі (LaTeX через $$...$$)
           </label>
-          <textarea
-            value={text} onChange={e => setText(e.target.value)}
-            className="input font-mono text-sm resize-none" rows={4}
-            placeholder="Текст питання. Формули: $$x^2 + y^2 = r^2$$"
-          />
+          <textarea value={text} onChange={e => setText(e.target.value)}
+            className="input resize-none font-mono text-sm" rows={3}
+            placeholder="Текст питання. Формули: $$x^2 + y^2 = r^2$$" />
           {text && (
             <div className="mt-2 p-3 bg-[#f8faf8] rounded-xl border border-[#e8ede8] text-sm">
               <p className="text-xs text-[#7a9a7a] mb-1">Перегляд:</p>
@@ -306,20 +343,20 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-[#445544] mb-1.5">Тема</label>
-            <input type="text" value={topic} onChange={e => setTopic(e.target.value)}
-              className="input" placeholder="Алгебра, Геометрія..." />
-          </div>
-          <div className="col-span-2">
-            <ImageUpload
-              currentUrl={imageUrl || null}
-              onUpload={(url) => setImageUrl(url ?? '')}
-            />
-          </div>
+        {/* Тема */}
+        <div>
+          <label className="block text-sm font-medium text-[#445544] mb-1.5">Тема</label>
+          <input type="text" value={topic} onChange={e => setTopic(e.target.value)}
+            className="input" placeholder="Алгебра, Геометрія..." />
         </div>
 
+        {/* Зображення */}
+        <ImageUpload
+          currentUrl={imageUrl || null}
+          onUpload={url => setImageUrl(url ?? '')}
+        />
+
+        {/* Single */}
         {type === 'single' && (
           <div>
             <label className="block text-sm font-medium text-[#445544] mb-2">
@@ -329,7 +366,7 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
               {(['А', 'Б', 'В', 'Г', 'Д'] as const).map(opt => (
                 <div key={opt} className="flex items-center gap-3">
                   <button type="button" onClick={() => setCorrectSingle(opt)}
-                    className={`w-9 h-9 rounded-lg font-bold text-sm flex-shrink-0 border-2 transition-all ${
+                    className={`w-9 h-9 rounded-xl font-bold text-sm flex-shrink-0 border-2 transition-all ${
                       correctSingle === opt
                         ? 'bg-[#0ead69] text-white border-[#0ead69]'
                         : 'bg-white text-[#556655] border-[#e8ede8] hover:border-[#0ead69]'
@@ -343,6 +380,7 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
           </div>
         )}
 
+        {/* Matching */}
         {type === 'matching' && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -351,9 +389,15 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
                 <div className="space-y-2">
                   {leftItems.map((item: any, i: number) => (
                     <div key={item.id} className="flex gap-2 items-center">
-                      <span className="w-7 h-7 bg-[#0ead69] text-white rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">{item.id}</span>
+                      <span className="w-7 h-7 bg-[#0ead69] text-white rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {item.id}
+                      </span>
                       <input type="text" value={item.text}
-                        onChange={e => { const u = [...leftItems]; u[i] = { ...item, text: e.target.value }; setLeftItems(u) }}
+                        onChange={e => {
+                          const u = [...leftItems]
+                          u[i] = { ...item, text: e.target.value }
+                          setLeftItems(u)
+                        }}
                         className="input text-sm" placeholder={`Твердження ${item.id}`} />
                     </div>
                   ))}
@@ -364,9 +408,15 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
                 <div className="space-y-2">
                   {rightItems.map((item: any, i: number) => (
                     <div key={item.id} className="flex gap-2 items-center">
-                      <span className="w-7 h-7 bg-[#f5f5f5] text-[#556655] rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">{item.id}</span>
+                      <span className="w-7 h-7 bg-[#f5f7f5] text-[#556655] rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">
+                        {item.id}
+                      </span>
                       <input type="text" value={item.text}
-                        onChange={e => { const u = [...rightItems]; u[i] = { ...item, text: e.target.value }; setRightItems(u) }}
+                        onChange={e => {
+                          const u = [...rightItems]
+                          u[i] = { ...item, text: e.target.value }
+                          setRightItems(u)
+                        }}
                         className="input text-sm" placeholder={`Варіант ${item.id}`} />
                     </div>
                   ))}
@@ -375,13 +425,13 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
             </div>
             <div>
               <label className="block text-sm font-medium text-[#445544] mb-2">Правильні відповідності</label>
-              <div className="flex gap-6">
+              <div className="flex gap-4">
                 {leftItems.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-2">
                     <span className="text-sm font-medium text-[#1a2e1a]">{item.id} →</span>
                     <select value={correctMatching[item.id] ?? 'А'}
                       onChange={e => setCorrectMatching(p => ({ ...p, [item.id]: e.target.value }))}
-                      className="input max-w-[72px] py-1.5">
+                      className="input max-w-[80px] py-1.5">
                       {['А', 'Б', 'В', 'Г', 'Д'].map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
@@ -391,6 +441,7 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
           </div>
         )}
 
+        {/* Open */}
         {type === 'open' && (
           <div className="space-y-4">
             <div>
@@ -409,8 +460,9 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
         )}
       </div>
 
+      {/* Кнопки */}
       <div className="flex gap-3 mt-6 pt-4 border-t border-[#e8ede8]">
-        <button onClick={handleSave} disabled={saving} className="btn-primary">
+        <button onClick={handleSave} disabled={saving} className="btn-primary flex-1">
           {saving ? 'Збереження...' : '💾 Зберегти питання'}
         </button>
         <button onClick={onCancel} className="btn-secondary">Скасувати</button>

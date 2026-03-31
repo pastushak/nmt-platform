@@ -45,6 +45,7 @@ export default async function VariantsPage() {
               <Link href="/admin" className="nav-link">Дашборд</Link>
               <Link href="/admin/variants" className="nav-link-active">Варіанти</Link>
               <Link href="/admin/students" className="nav-link">Учні</Link>
+              <Link href="/materials" className="nav-link">Матеріали</Link>
             </nav>
           </div>
           <Link href="/admin/variants/new" className="btn-primary text-sm">+ Новий варіант</Link>

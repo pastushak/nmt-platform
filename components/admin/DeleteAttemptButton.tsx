@@ -12,15 +12,8 @@ export default function DeleteAttemptButton({ attemptId }: { attemptId: string }
   async function handleDelete() {
     setLoading(true)
     const supabase = createClient()
-    
-    const { error: answersError } = await supabase
-      .from('answers').delete().eq('attempt_id', attemptId)
-    console.log('Answers deleted:', answersError)
-    
-    const { error: attemptError } = await supabase
-      .from('attempts').delete().eq('id', attemptId)
-    console.log('Attempt deleted:', attemptError)
-    
+    await supabase.from('answers').delete().eq('attempt_id', attemptId)
+    await supabase.from('attempts').delete().eq('id', attemptId)
     setLoading(false)
     setConfirm(false)
     window.location.href = window.location.href
