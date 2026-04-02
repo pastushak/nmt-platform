@@ -31,14 +31,14 @@ export const MATERIALS: MaterialCategory[] = [
 | Дискримінант | $$D = b^2 - 4ac$$ |
 | Корені (D > 0) | $$x_{1,2} = \\frac{-b \\pm \\sqrt{D}}{2a}$$ |
 | Один корінь (D = 0) | $$x = \\frac{-b}{2a}$$ |
-| Розклад | $$ax^2 + bx + c = a(x-x_1)(x-x_2)$$ |`
+| Розклад кв. тричлена | $$ax^2 + bx + c = a(x-x_1)(x-x_2)$$ |`
       },
       {
         title: 'Модуль числа',
         content: `| Визначення | |
 |-----------|--|
-| $$|a| = a$$, якщо $$a \\geq 0$$ | |
-| $$|a| = -a$$, якщо $$a < 0$$ | |`
+| $$a \\geq 0$$ | $$\\lvert a\\rvert = a$$ |
+| $$a < 0$$ | $$\\lvert a\\rvert = -a$$ |`
       },
       {
         title: 'Степені',
@@ -83,7 +83,7 @@ export const MATERIALS: MaterialCategory[] = [
 | Знаменник | $$q = \\frac{b_{n+1}}{b_n}$$ |
 | Основна властивість | $$b_n^2 = b_{n-1} \\cdot b_{n+1}$$ |
 | Сума n членів | $$S_n = \\frac{b_1(q^n-1)}{q-1}, \\quad q \\neq 1$$ |
-| Нескінченна спадна | $$S = \\frac{b_1}{1-q}, \\quad |q|<1$$ |`
+| Нескінченна спадна | $$S = \\frac{b_1}{1-q}, \\quad \\lvert q\\rvert < 1$$ |`
       },
       {
         title: 'Комбінаторика',
@@ -132,11 +132,11 @@ export const MATERIALS: MaterialCategory[] = [
         title: 'Властивості модуля',
         content: `| Властивість | Формула |
 |------------|---------|
-| Симетрія | $$|a-b| = |b-a|$$ |
-| Корінь | $$\\sqrt{a^2} = |a|$$ |
-| Квадрат | $$|a|^2 = a^2$$ |
-| Нерівність $$(\\leq)$$ | $$|x| \\leq a \\Leftrightarrow -a \\leq x \\leq a$$ |
-| Нерівність $$(\\geq)$$ | $$|x| \\geq a \\Leftrightarrow x \\geq a$$ або $$x \\leq -a$$ |`
+| Симетрія | $$\\lvert a-b\\rvert = \\lvert b-a\\rvert$$ |
+| Корінь | $$\\sqrt{a^2} = \\lvert a\\rvert$$ |
+| Квадрат | $$\\lvert a\\rvert^2 = a^2$$ |
+| Нерівність $$(\\leq)$$ | $$\\lvert x\\rvert \\leq a \\Leftrightarrow -a \\leq x \\leq a$$ |
+| Нерівність $$(\\geq)$$ | $$\\lvert x\\rvert \\geq a \\Leftrightarrow x \\geq a \\text{ або } x \\leq -a$$ |`
       },
       {
         title: 'Дії з дробами',
@@ -172,7 +172,7 @@ export const MATERIALS: MaterialCategory[] = [
 | $$\\sqrt[n]{ab} = \\sqrt[n]{a} \\cdot \\sqrt[n]{b}$$ | |
 | $$\\sqrt[n]{\\frac{a}{b}} = \\frac{\\sqrt[n]{a}}{\\sqrt[n]{b}}$$ | |
 | $$(\\sqrt[n]{a})^n = a$$ | $$a \\geq 0$$ |
-| $$\\sqrt[n]{a^n} = |a|$$ | n парне |
+| $$\\sqrt[n]{a^n} = \\lvert a\\rvert$$ | n парне |
 | $$\\sqrt[n]{a^n} = a$$ | n непарне |`
       },
       {
@@ -191,9 +191,9 @@ export const MATERIALS: MaterialCategory[] = [
 |-------|---------|-------|
 | Сума подій | $$P(A+B) = P(A)+P(B)-P(AB)$$ | Загальний |
 | Несумісні події | $$P(A+B) = P(A)+P(B)$$ | $$P(AB)=0$$ |
-| Добуток подій | $$P(AB) = P(A) \\cdot P(B|A)$$ | Загальний |
+| Добуток подій | $$P(AB) = P(A) \\cdot P(B \\mid A)$$ | Загальний |
 | Незалежні події | $$P(AB) = P(A) \\cdot P(B)$$ | Незалежні |
-| Умовна ймовірність | $$P(B|A) = \\frac{P(AB)}{P(A)}$$ | $$P(A)>0$$ |
+| Умовна ймовірність | $$P(B \\mid A) = \\dfrac{P(AB)}{P(A)}$$ | $$P(A)>0$$ |
 | Протилежна подія | $$P(\\bar{A}) = 1-P(A)$$ | |`
       },
       {
@@ -492,9 +492,9 @@ export const MATERIALS: MaterialCategory[] = [
 |---------|---------|
 | Середина відрізку | $$x_0 = \\frac{x_1+x_2}{2}, \\quad y_0 = \\frac{y_1+y_2}{2}$$ |
 | Довжина відрізку | $$AB = \\sqrt{(x_2-x_1)^2+(y_2-y_1)^2}$$ |
-| Координати вектора | $$\\vec{AB}(x_2-x_1;\; y_2-y_1)$$ |
+| Координати вектора | $$\\vec{AB}(x_2-x_1;\ y_2-y_1)$$ |
 | Скалярний добуток | $$\\vec{a}\\cdot\\vec{b} = a_1 b_1 + a_2 b_2 + a_3 b_3$$ |
-| Кут між векторами | $$\\cos\\varphi = \\frac{\\vec{a}\\cdot\\vec{b}}{|\\vec{a}||\\vec{b}|}$$ |`
+| Кут між векторами | $$\\cos\\varphi = \\dfrac{\\vec{a}\\cdot\\vec{b}}{\\lvert\\vec{a}\\rvert\\cdot\\lvert\\vec{b}\\rvert}$$ |`
       },
     ],
     extra: [
@@ -505,7 +505,7 @@ export const MATERIALS: MaterialCategory[] = [
 | Медіана | $$\\frac{AM}{MN} = \\frac{BM}{MK} = \\frac{CM}{MT} = \\frac{2}{1}$$ |
 | Бісектриса | $$\\frac{AD}{DC} = \\frac{AB}{BC}$$ |
 | Середня лінія | $$MN \\parallel AC, \\quad MN = \\frac{1}{2}AC$$ |
-| Нерівність | $$|b-c| < a < b+c$$ |
+| Нерівність | $$\\lvert b-c\\rvert < a < b+c$$ |
 | Рівнобедрений | $$AB = BC \\Rightarrow \\angle A = \\angle C$$ |`
       },
       {
@@ -575,8 +575,8 @@ export const MATERIALS: MaterialCategory[] = [
         content: `| Елемент | Формула |
 |---------|---------|
 | Відстань у просторі | $$AB = \\sqrt{(x_2-x_1)^2+(y_2-y_1)^2+(z_2-z_1)^2}$$ |
-| Довжина вектора 2D | $$|\\vec{a}| = \\sqrt{a_1^2+a_2^2}$$ |
-| Довжина вектора 3D | $$|\\vec{a}| = \\sqrt{a_1^2+a_2^2+a_3^2}$$ |
+| Довжина вектора 2D | $$\\lvert\\vec{a}\\rvert = \\sqrt{a_1^2+a_2^2}$$ |
+| Довжина вектора 3D | $$\\lvert\\vec{a}\\rvert = \\sqrt{a_1^2+a_2^2+a_3^2}$$ |
 | Колінеарні вектори | $$\\vec{a} \\parallel \\vec{b} \\Leftrightarrow \\frac{a_1}{b_1} = \\frac{a_2}{b_2}$$ |
 | Перпендикулярні | $$\\vec{a} \\perp \\vec{b} \\Leftrightarrow \\vec{a}\\cdot\\vec{b} = 0$$ |`
       },
@@ -585,7 +585,18 @@ export const MATERIALS: MaterialCategory[] = [
   {
     name: 'Стереометрія',
     icon: '▲',
-    official: [],
+    official: [
+  {
+    title: "Об'ємні фігури",
+    content: `| Фігура | Об'єм | Бічна поверхня |
+|--------|-------|----------------|
+| Пряма призма | $$V = S_{осн} \\cdot H$$ | $$S_б = P_{осн} \\cdot H$$ |
+| Правильна піраміда | $$V = \\frac{1}{3} S_{осн} \\cdot H$$ | $$S_б = \\frac{1}{2} P_{осн} \\cdot m$$ |
+| Циліндр | $$V = \\pi R^2 H$$ | $$S_б = 2\\pi R H$$ |
+| Конус | $$V = \\frac{1}{3}\\pi R^2 H$$ | $$S_б = \\pi R L$$ |
+| Куля | $$V = \\frac{4}{3}\\pi R^3$$ | $$S = 4\\pi R^2$$ |`
+  },
+],
     extra: [
       {
         title: 'Взаємне розміщення прямих у просторі',

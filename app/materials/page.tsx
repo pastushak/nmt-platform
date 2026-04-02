@@ -7,7 +7,7 @@ export default function MaterialsPage() {
   return (
     <div className="min-h-screen bg-[#f5f7f5]">
       <header className="bg-white border-b border-[#e8ede8]">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-[1800px] mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-[#0ead69] rounded-lg flex items-center justify-center">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -20,7 +20,7 @@ export default function MaterialsPage() {
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-6 py-8">
+      <div className="max-w-[1800px] mx-auto px-6 py-8">
         <div className="flex gap-8">
 
           {/* Бічна навігація */}
