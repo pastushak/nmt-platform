@@ -30,7 +30,8 @@ export default function MathText({ text, className = '' }: MathTextProps) {
         return <span key={i} className="text-red-500 text-xs">[формула]</span>
       }
     }
-    return <span key={i}>{part}</span>
+    const formatted = part.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    return <span key={i} dangerouslySetInnerHTML={{ __html: formatted }} />
   })
 
   return <div className={`leading-relaxed ${className}`}>{rendered}</div>
