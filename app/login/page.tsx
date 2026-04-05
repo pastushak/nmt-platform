@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import Footer from '@/components/ui/Footer'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -32,9 +33,7 @@ export default function LoginPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const { data: profile } = await supabase
-      .rpc('get_my_profile')
-
+    const { data: profile } = await supabase.rpc('get_my_profile')
     window.location.href = profile?.role === 'teacher' ? '/admin' : '/home'
   }
 
@@ -59,8 +58,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7f5] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-[#f5f7f5] flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md flex-1 flex flex-col justify-center">
 
         {/* Логотип */}
         <div className="text-center mb-8">
@@ -83,7 +82,6 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Google кнопка */}
           <button
             type="button"
             onClick={handleGoogle}
@@ -106,14 +104,12 @@ export default function LoginPage() {
             Увійти через Google
           </button>
 
-          {/* Розділювач */}
           <div className="flex items-center gap-3 mb-4">
             <div className="flex-1 h-px bg-[#e8ede8]"></div>
             <span className="text-xs text-[#aec5ae] font-medium">або</span>
             <div className="flex-1 h-px bg-[#e8ede8]"></div>
           </div>
 
-          {/* Email форма */}
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-[#445544] mb-1.5">Email</label>
@@ -127,7 +123,6 @@ export default function LoginPage() {
                 autoComplete="email"
               />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-[#445544] mb-1.5">Пароль</label>
               <input
@@ -165,7 +160,8 @@ export default function LoginPage() {
           Для отримання доступу зверніться до викладача
         </p>
       </div>
+
+      <Footer />
     </div>
   )
 }
-

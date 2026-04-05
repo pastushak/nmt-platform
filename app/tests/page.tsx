@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import LogoutButton from '@/components/ui/LogoutButton'
 import StudentHeader from '@/components/StudentHeader'
+import Footer from '@/components/ui/Footer'
 
 export default async function TestsPage() {
   const supabase = createServerSupabaseClient()
@@ -13,13 +13,11 @@ export default async function TestsPage() {
 
   if (profile?.role === 'teacher') redirect('/admin')
 
-  // Всі варіанти (і опубліковані і ні)
   const { data: allVariants } = await supabase
     .from('variants')
     .select('*')
     .order('created_at', { ascending: true })
 
-  // Завершені спроби учня
   const { data: attempts } = await supabase
     .from('attempts')
     .select('variant_id, nmt_score, score_total, finished_at, status')
@@ -27,28 +25,23 @@ export default async function TestsPage() {
     .eq('status', 'done')
     .order('finished_at', { ascending: false })
 
-  // Групуємо спроби по варіанту
   const attemptsByVariant: Record<string, typeof attempts> = {}
   for (const a of attempts ?? []) {
     if (!attemptsByVariant[a.variant_id]) attemptsByVariant[a.variant_id] = []
     attemptsByVariant[a.variant_id]!.push(a)
   }
 
-  // Дата останнього входу (для визначення "нових" варіантів)
   const lastSeen = profile?.last_seen_at ? new Date(profile.last_seen_at) : null
   const newThreshold = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000)
 
   const variants = allVariants ?? []
 
   return (
-    <div className="min-h-screen bg-[#f5f7f5]">
-
-      {/* Навігація */}
+    <div className="min-h-screen bg-[#f5f7f5] flex flex-col">
       <StudentHeader currentPage="tests" userName={profile?.name} />
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <main className="max-w-5xl mx-auto w-full px-6 py-8 flex-1">
 
-        {/* Заголовок */}
         <div className="mb-6">
           <h1 className="page-title mb-1">Варіанти тестів</h1>
           <p className="text-sm text-[#7a9a7a]">
@@ -56,7 +49,6 @@ export default async function TestsPage() {
           </p>
         </div>
 
-        {/* Список варіантів */}
         {!variants.length ? (
           <div className="card text-center py-16">
             <p className="text-4xl mb-4">📭</p>
@@ -90,8 +82,6 @@ export default async function TestsPage() {
                   }`}
                 >
                   <div className="p-5 flex items-center gap-4">
-
-                    {/* Номер */}
                     <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
                       !variant.is_published
                         ? 'bg-[#f5f5f5] text-[#9e9e9e]'
@@ -102,24 +92,13 @@ export default async function TestsPage() {
                       {!variant.is_published ? '🔒' : index + 1}
                     </div>
 
-                    {/* Інфо */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="font-semibold text-[#1a2e1a] text-sm">
-                          {variant.title}
-                        </span>
-                        {!variant.is_published && (
-                          <span className="badge-locked">скоро</span>
-                        )}
-                        {(isNew || isRecentlyAdded) && (
-                          <span className="badge-new">НОВЕ</span>
-                        )}
-                        {attemptCount === 1 && (
-                          <span className="badge-done">✓ пройдено</span>
-                        )}
-                        {attemptCount > 1 && (
-                          <span className="badge-done">✓ ×{attemptCount}</span>
-                        )}
+                        <span className="font-semibold text-[#1a2e1a] text-sm">{variant.title}</span>
+                        {!variant.is_published && <span className="badge-locked">скоро</span>}
+                        {(isNew || isRecentlyAdded) && <span className="badge-new">НОВЕ</span>}
+                        {attemptCount === 1 && <span className="badge-done">✓ пройдено</span>}
+                        {attemptCount > 1 && <span className="badge-done">✓ ×{attemptCount}</span>}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-[#7a9a7a]">
                         <span>⏱ {variant.time_limit} хв</span>
@@ -130,23 +109,16 @@ export default async function TestsPage() {
                       </div>
                     </div>
 
-                    {/* Правий блок */}
                     <div className="flex items-center gap-4 flex-shrink-0">
                       {bestScore !== null && (
                         <div className="text-right">
-                          <div className="text-xl font-bold text-[#1a2e1a] leading-tight">
-                            {bestScore}
-                          </div>
+                          <div className="text-xl font-bold text-[#1a2e1a] leading-tight">{bestScore}</div>
                           <div className="text-xs text-[#7a9a7a]">найкращий</div>
                         </div>
                       )}
-
                       {variant.is_published ? (
                         profile?.is_verified ? (
-                          <Link
-                            href={`/test/${variant.id}`}
-                            className="btn-primary text-xs py-2 px-4"
-                          >
+                          <Link href={`/test/${variant.id}`} className="btn-primary text-xs py-2 px-4">
                             {attemptCount === 0 ? '▶ Пройти' : '▶ Ще раз'}
                           </Link>
                         ) : (
@@ -162,7 +134,6 @@ export default async function TestsPage() {
                     </div>
                   </div>
 
-                  {/* Попередні спроби */}
                   {attemptCount > 0 && (
                     <div className="px-5 pb-4 pt-0">
                       <div className="border-t border-[#f0f7f0] pt-3">
@@ -183,6 +154,7 @@ export default async function TestsPage() {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   )
 }

@@ -87,13 +87,19 @@ function ExplainButton({ question, answer, explainCount, onExplain }: {
   )
 }
 
-export default function ResultsClient({ attempt, questions, answers }: any) {
+export default function ResultsClient({ attempt, questions, answers, durationMin }: any) {
   const [explainCount, setExplainCount] = useState(0)
 
   const answerMap = Object.fromEntries(answers.map((a: any) => [a.question_id, a]))
   const nmtScore = attempt.nmt_score
   const total = attempt.score_total
   const percent = Math.round((total / MAX_SCORES.total) * 100)
+
+  const durationStr = durationMin != null
+    ? durationMin < 60
+      ? `${durationMin} хв`
+      : `${Math.floor(durationMin / 60)} год ${durationMin % 60} хв`
+    : null
 
   const nmtColor = !nmtScore ? 'text-[#7a9a7a]'
     : nmtScore >= 180 ? 'text-[#2e7d32]'
@@ -139,6 +145,11 @@ export default function ResultsClient({ attempt, questions, answers }: any) {
               />
             </div>
           </div>
+          {durationStr && (
+            <p className="text-sm text-[#7a9a7a] mt-3">
+              ⏱ Час виконання: <span className="font-semibold text-[#1a2e1a]">{durationStr}</span>
+            </p>
+          )}
         </div>
 
         {/* Розбір питань */}

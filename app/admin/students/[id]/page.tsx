@@ -6,6 +6,13 @@ import DeleteAttemptButton from '@/components/admin/DeleteAttemptButton'
 import AdminHeader from '@/components/admin/AdminHeader'
 
 export const revalidate = 0
+
+function formatDuration(started: string, finished: string): string {
+  const mins = Math.round((new Date(finished).getTime() - new Date(started).getTime()) / 60000)
+  if (mins < 60) return `${mins} хв`
+  return `${Math.floor(mins / 60)} год ${mins % 60} хв`
+}
+
 export default async function StudentDetailPage({
   params,
 }: {
@@ -89,6 +96,19 @@ export default async function StudentDetailPage({
     ? Math.round(nmtScores.reduce((s, x) => s + x, 0) / nmtScores.length)
     : null
 
+  // Середній час виконання
+  const durations = (attempts ?? [])
+    .filter(a => a.started_at && a.finished_at)
+    .map(a => Math.round((new Date(a.finished_at!).getTime() - new Date(a.started_at!).getTime()) / 60000))
+  const avgDurationMin = durations.length
+    ? Math.round(durations.reduce((s, x) => s + x, 0) / durations.length)
+    : null
+  const avgDurationStr = avgDurationMin != null
+    ? avgDurationMin < 60
+      ? `${avgDurationMin} хв`
+      : `${Math.floor(avgDurationMin / 60)} год ${avgDurationMin % 60} хв`
+    : null
+
   const chartData = (attempts ?? []).map(a => ({
     date: new Date(a.finished_at!).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit' }),
     nmt: a.nmt_score ?? 0,
@@ -99,7 +119,7 @@ export default async function StudentDetailPage({
 
   return (
     <div className="min-h-screen bg-[#f5f7f5]">
-      <AdminHeader currentPage="dashboard" userName={profile?.name} />
+      <AdminHeader currentPage="students" userName={profile?.name} />
 
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
 
@@ -132,7 +152,7 @@ export default async function StudentDetailPage({
         </div>
 
         {/* Зведені показники */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           {[
             { label: 'Найкращий НМТ', value: best, color: 'text-[#2e7d32]' },
             { label: 'Останній НМТ', value: last, color: 'text-[#0ead69]' },
@@ -144,6 +164,10 @@ export default async function StudentDetailPage({
               <div className="text-sm text-[#7a9a7a] mt-1">{label}</div>
             </div>
           ))}
+          <div className="card text-center">
+            <div className="text-2xl font-black text-[#f57f17]">{avgDurationStr ?? '—'}</div>
+            <div className="text-sm text-[#7a9a7a] mt-1">Сер. час</div>
+          </div>
         </div>
 
         {/* Графік прогресу */}
@@ -177,7 +201,7 @@ export default async function StudentDetailPage({
         )}
 
         {/* Таблиця спроб */}
-        <div className="card">
+        <div className="card overflow-x-auto">
           <h3 className="font-bold text-[#1a2e1a] mb-4">📋 Всі спроби</h3>
           {!attempts?.length ? (
             <p className="text-sm text-[#7a9a7a]">Учень ще не проходив жодного тесту</p>
@@ -185,7 +209,7 @@ export default async function StudentDetailPage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#e8ede8]">
-                  {['Варіант', 'Дата', 'Тестовий', 'НМТ', 'Вибір', 'Відпов.', 'Вписати', 'Серед. класу', ''].map(h => (
+                  {['Варіант', 'Дата', 'Час', 'Тестовий', 'НМТ', 'Вибір', 'Відпов.', 'Вписати', 'Серед. класу', ''].map(h => (
                     <th key={h} className="text-left py-2 px-2 text-xs text-[#7a9a7a] font-semibold uppercase">{h}</th>
                   ))}
                 </tr>
@@ -194,13 +218,19 @@ export default async function StudentDetailPage({
                 {[...(attempts ?? [])].reverse().map(a => {
                   const ca = classAvg[a.variant_id]
                   const diff = a.nmt_score && ca ? a.nmt_score - ca : null
+                  const duration = a.started_at && a.finished_at
+                    ? formatDuration(a.started_at, a.finished_at)
+                    : '—'
                   return (
                     <tr key={a.id} className="border-b border-[#f5f7f5] hover:bg-[#f8faf8]">
-                      <td className="py-2.5 px-2 font-medium text-[#1a2e1a] max-w-[180px] truncate">
+                      <td className="py-2.5 px-2 font-medium text-[#1a2e1a] max-w-[160px] truncate">
                         {(a.variants as any)?.title}
                       </td>
                       <td className="py-2.5 px-2 text-[#7a9a7a]">
                         {new Date(a.finished_at!).toLocaleDateString('uk-UA')}
+                      </td>
+                      <td className="py-2.5 px-2 text-[#f57f17] font-medium whitespace-nowrap">
+                        ⏱ {duration}
                       </td>
                       <td className="py-2.5 px-2 font-mono text-center">{a.score_total}/32</td>
                       <td className="py-2.5 px-2 text-center font-bold text-[#0ead69]">

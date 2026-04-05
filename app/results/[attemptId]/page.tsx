@@ -31,11 +31,17 @@ export default async function ResultsPage({
     .select('*')
     .eq('attempt_id', params.attemptId)
 
+  // Рахуємо час виконання
+  const durationMin = attempt.started_at && attempt.finished_at
+    ? Math.round((new Date(attempt.finished_at).getTime() - new Date(attempt.started_at).getTime()) / 60000)
+    : null
+
   return (
     <ResultsClient
       attempt={attempt}
       questions={questions ?? []}
       answers={answers ?? []}
+      durationMin={durationMin}
     />
   )
 }

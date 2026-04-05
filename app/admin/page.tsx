@@ -33,7 +33,7 @@ export default async function AdminPage() {
 
   const { data: allAttempts } = await supabase
     .from('attempts')
-    .select('variant_id, nmt_score, variants(title), finished_at, student_id')
+    .select('variant_id, nmt_score, variants(title), finished_at, started_at, student_id')
     .eq('status', 'done')
     .not('nmt_score', 'is', null)
 
@@ -45,6 +45,17 @@ export default async function AdminPage() {
     }
     if (a.nmt_score) variantStats[a.variant_id].scores.push(a.nmt_score)
   }
+
+  // Середній час виконання по класу
+  const allDurations = (allAttempts ?? [])
+    .filter(a => a.started_at && a.finished_at)
+    .map(a => Math.round((new Date(a.finished_at!).getTime() - new Date(a.started_at!).getTime()) / 60000))
+  const avgDurationMin = allDurations.length
+    ? Math.round(allDurations.reduce((s, x) => s + x, 0) / allDurations.length)
+    : null
+  const avgDurationStr = avgDurationMin != null
+    ? avgDurationMin < 60 ? `${avgDurationMin} хв` : `${Math.floor(avgDurationMin / 60)} год ${avgDurationMin % 60} хв`
+    : '—'
 
   // --- Графік активності (останні 7 днів по днях) ---
   const now = new Date()
@@ -181,7 +192,7 @@ export default async function AdminPage() {
         </div>
 
         {/* Зведені показники */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { label: 'Варіантів', value: variantsCount ?? 0, color: 'text-[#0ead69]' },
             { label: 'Учнів', value: studentsCount ?? 0, color: 'text-[#1565c0]' },
@@ -192,6 +203,10 @@ export default async function AdminPage() {
               <div className="text-sm text-[#7a9a7a] mt-1">{label}</div>
             </div>
           ))}
+          <div className="card text-center">
+            <div className="text-2xl font-black text-[#f57f17]">{avgDurationStr}</div>
+            <div className="text-sm text-[#7a9a7a] mt-1">Сер. час виконання</div>
+          </div>
         </div>
 
         {/* 4 графіки */}
