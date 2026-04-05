@@ -76,7 +76,7 @@ export default async function StatsPage() {
       .in('attempt_id', attemptIds)
 
     if (allAnswers && allAnswers.length > 0) {
-      const questionIds = [...new Set(allAnswers.map(a => a.question_id))]
+      const questionIds = Array.from(new Set(allAnswers.map(a => a.question_id)))
 
       const { data: questions } = await supabase
         .from('questions')
