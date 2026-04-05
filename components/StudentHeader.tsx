@@ -5,34 +5,33 @@ import Link from 'next/link'
 import LogoutButton from '@/components/ui/LogoutButton'
 
 interface Props {
-  currentPage: 'dashboard' | 'variants' | 'students' | 'materials'
+  currentPage: 'home' | 'tests' | 'stats' | 'materials'
   userName?: string
 }
 
-export default function AdminHeader({ currentPage, userName }: Props) {
+export default function StudentHeader({ currentPage, userName }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const links = [
-    { href: '/admin', label: 'Дашборд', key: 'dashboard' },
-    { href: '/admin/variants', label: 'Варіанти', key: 'variants' },
-    { href: '/admin/students', label: 'Учні', key: 'students' },
+    { href: '/tests', label: 'Тести', key: 'tests' },
+    { href: '/stats', label: 'Статистика', key: 'stats' },
     { href: '/materials', label: 'Матеріали', key: 'materials' },
   ]
 
   return (
     <header className="bg-white border-b border-[#e8ede8]">
-      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
 
-        {/* Логотип — клікабельний */}
-        <Link href="/admin" className="flex items-center gap-3">
+        {/* Логотип */}
+        <Link href="/home" className="flex items-center gap-3">
           <div className="w-8 h-8 bg-[#0ead69] rounded-lg flex items-center justify-center">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M8 1L2 4.5v5c0 3.8 2.5 6.5 6 7.5 3.5-1 6-3.7 6-7.5v-5L8 1z" fill="white"/>
             </svg>
           </div>
           <div>
-            <div className="font-bold text-[#1a2e1a] text-sm">НМТ Математика</div>
-            <div className="text-[#7a9a7a] text-xs">Панель викладача</div>
+            <div className="font-bold text-[#1a2e1a] text-sm leading-tight">НМТ Математика</div>
+            <div className="text-[#7a9a7a] text-xs">Підготовка 2026</div>
           </div>
         </Link>
 
@@ -53,7 +52,7 @@ export default function AdminHeader({ currentPage, userName }: Props) {
           )}
           <LogoutButton />
 
-          {/* Бургер (тільки мобільний) */}
+          {/* Бургер */}
           <button
             onClick={() => setMenuOpen(prev => !prev)}
             className="md:hidden flex flex-col justify-center items-center w-9 h-9 gap-1.5 rounded-lg hover:bg-[#f0f7f0] transition-colors"
