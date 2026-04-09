@@ -7,30 +7,57 @@ import { Question, Variant } from '@/lib/types'
 import MathText from '@/components/ui/MathText'
 import ImageUpload from '@/components/ui/ImageUpload'
 
-const SLOTS = Array.from({ length: 22 }, (_, i) => i + 1)
+type Subject = 'math' | 'ukrainian'
 
-function getType(num: number) {
+// ---- Math config ----
+const MATH_SLOTS = Array.from({ length: 22 }, (_, i) => i + 1)
+function getMathType(num: number) {
   if (num <= 15) return 'single'
   if (num <= 18) return 'matching'
   return 'open'
 }
 
+// ---- Ukrainian config ----
+const UKR_SLOTS = Array.from({ length: 30 }, (_, i) => i + 1)
+function getUkrType(num: number) {
+  if (num <= 25) return 'single'
+  return 'matching'
+}
+// Завдання 1–10: 4 варіанти (А–Г), 11–25: 5 варіантів (А–Д)
+function getUkrOptionCount(num: number): 4 | 5 {
+  return num <= 10 ? 4 : 5
+}
+
 interface Props {
-  variant: Variant
+  variant: Variant & { subject?: Subject }
   initialQuestions: Question[]
 }
 
 export default function VariantEditor({ variant, initialQuestions }: Props) {
+  const [subject, setSubject] = useState<Subject>(variant.subject ?? 'math')
   const [questions, setQuestions] = useState<Question[]>(initialQuestions)
   const [activeSlot, setActiveSlot] = useState<number | null>(null)
   const [showImport, setShowImport] = useState(false)
   const [importJson, setImportJson] = useState('')
   const [importError, setImportError] = useState<string | null>(null)
+  const [subjectSaving, setSubjectSaving] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
+  const slots = subject === 'math' ? MATH_SLOTS : UKR_SLOTS
+  const getType = subject === 'math' ? getMathType : getUkrType
+
   function getQuestion(num: number) {
     return questions.find(q => q.number === num) ?? null
+  }
+
+  async function handleSubjectChange(newSubject: Subject) {
+    if (newSubject === subject) return
+    setSubjectSaving(true)
+    await supabase.from('variants').update({ subject: newSubject }).eq('id', variant.id)
+    setSubject(newSubject)
+    setSubjectSaving(false)
+    router.refresh()
   }
 
   async function deleteQuestion(id: string) {
@@ -77,6 +104,44 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
   return (
     <div className="space-y-6">
 
+      {/* Перемикач предмету */}
+      <div className="card">
+        <div className="flex items-center gap-4 flex-wrap">
+          <span className="text-sm font-semibold text-[#445544]">Предмет:</span>
+          <div className="flex rounded-xl border border-[#e8ede8] overflow-hidden">
+            <button
+              onClick={() => handleSubjectChange('math')}
+              disabled={subjectSaving}
+              className={`px-4 py-2 text-sm font-semibold transition-all ${
+                subject === 'math'
+                  ? 'bg-[#0ead69] text-white'
+                  : 'bg-white text-[#445544] hover:bg-[#f0faf2]'
+              }`}
+            >
+              📐 Математика
+            </button>
+            <button
+              onClick={() => handleSubjectChange('ukrainian')}
+              disabled={subjectSaving}
+              className={`px-4 py-2 text-sm font-semibold transition-all border-l border-[#e8ede8] ${
+                subject === 'ukrainian'
+                  ? 'bg-[#1565c0] text-white'
+                  : 'bg-white text-[#445544] hover:bg-[#e3f2fd]'
+              }`}
+            >
+              🇺🇦 Українська мова
+            </button>
+          </div>
+          {subjectSaving && <span className="text-xs text-[#7a9a7a]">Збереження...</span>}
+          <div className="ml-auto text-xs text-[#7a9a7a]">
+            {subject === 'math'
+              ? '22 питання · max 32 бали · 60 хв'
+              : '30 питань · max 45 балів · 60 хв'
+            }
+          </div>
+        </div>
+      </div>
+
       {/* Кнопки дій */}
       <div className="flex gap-3">
         <button onClick={() => setShowImport(!showImport)} className="btn-secondary text-sm">
@@ -93,7 +158,10 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
             onChange={e => setImportJson(e.target.value)}
             className="input font-mono text-xs resize-none"
             rows={10}
-            placeholder={`[\n  {\n    "number": 1,\n    "type": "single",\n    "text": "Текст питання",\n    "topic": "Алгебра",\n    "options": {"А":"...","Б":"...","В":"...","Г":"...","Д":"..."},\n    "correct_single": "В"\n  }\n]`}
+            placeholder={subject === 'math'
+              ? `[\n  {\n    "number": 1,\n    "type": "single",\n    "text": "Текст питання",\n    "topic": "Алгебра",\n    "options": {"А":"...","Б":"...","В":"...","Г":"...","Д":"..."},\n    "correct_single": "В"\n  }\n]`
+              : `[\n  {\n    "number": 1,\n    "type": "single",\n    "text": "Текст питання",\n    "topic": "Орфографія",\n    "options": {"А":"...","Б":"...","В":"...","Г":"..."},\n    "correct_single": "Б"\n  }\n]`
+            }
           />
           {importError && <p className="text-red-600 text-sm mt-2">{importError}</p>}
           <div className="flex gap-3 mt-3">
@@ -103,47 +171,93 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
         </div>
       )}
 
-      {/* Блок 1 */}
-      <div className="card">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="bg-[#e8f5e9] text-[#2e7d32] text-xs font-bold px-2.5 py-1 rounded-full">Блок 1</span>
-          <h3 className="font-bold text-[#1a2e1a]">Питання 1–15 · Вибір однієї правильної (max 15 балів)</h3>
-        </div>
-        <div className="space-y-2">
-          {SLOTS.filter(n => n <= 15).map(num => (
-            <QuestionSlot key={num} num={num} question={getQuestion(num)}
-              onEdit={() => setActiveSlot(num)} onDelete={deleteQuestion} />
-          ))}
-        </div>
-      </div>
+      {/* ===== МАТЕМАТИКА ===== */}
+      {subject === 'math' && (
+        <>
+          <div className="card">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="bg-[#e8f5e9] text-[#2e7d32] text-xs font-bold px-2.5 py-1 rounded-full">Блок 1</span>
+              <h3 className="font-bold text-[#1a2e1a]">Питання 1–15 · Вибір однієї правильної (max 15 балів)</h3>
+            </div>
+            <div className="space-y-2">
+              {MATH_SLOTS.filter(n => n <= 15).map(num => (
+                <QuestionSlot key={num} num={num} question={getQuestion(num)}
+                  onEdit={() => setActiveSlot(num)} onDelete={deleteQuestion} />
+              ))}
+            </div>
+          </div>
 
-      {/* Блок 2 */}
-      <div className="card">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="bg-[#e3f2fd] text-[#1565c0] text-xs font-bold px-2.5 py-1 rounded-full">Блок 2</span>
-          <h3 className="font-bold text-[#1a2e1a]">Питання 16–18 · Відповідності (max 9 балів)</h3>
-        </div>
-        <div className="space-y-2">
-          {SLOTS.filter(n => n >= 16 && n <= 18).map(num => (
-            <QuestionSlot key={num} num={num} question={getQuestion(num)}
-              onEdit={() => setActiveSlot(num)} onDelete={deleteQuestion} />
-          ))}
-        </div>
-      </div>
+          <div className="card">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="bg-[#e3f2fd] text-[#1565c0] text-xs font-bold px-2.5 py-1 rounded-full">Блок 2</span>
+              <h3 className="font-bold text-[#1a2e1a]">Питання 16–18 · Відповідності (max 9 балів)</h3>
+            </div>
+            <div className="space-y-2">
+              {MATH_SLOTS.filter(n => n >= 16 && n <= 18).map(num => (
+                <QuestionSlot key={num} num={num} question={getQuestion(num)}
+                  onEdit={() => setActiveSlot(num)} onDelete={deleteQuestion} />
+              ))}
+            </div>
+          </div>
 
-      {/* Блок 3 */}
-      <div className="card">
-        <div className="flex items-center gap-2 mb-4">
-          <span className="bg-[#fff8e1] text-[#f57f17] text-xs font-bold px-2.5 py-1 rounded-full">Блок 3</span>
-          <h3 className="font-bold text-[#1a2e1a]">Питання 19–22 · Вписати відповідь (max 8 балів)</h3>
-        </div>
-        <div className="space-y-2">
-          {SLOTS.filter(n => n >= 19).map(num => (
-            <QuestionSlot key={num} num={num} question={getQuestion(num)}
-              onEdit={() => setActiveSlot(num)} onDelete={deleteQuestion} />
-          ))}
-        </div>
-      </div>
+          <div className="card">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="bg-[#fff8e1] text-[#f57f17] text-xs font-bold px-2.5 py-1 rounded-full">Блок 3</span>
+              <h3 className="font-bold text-[#1a2e1a]">Питання 19–22 · Вписати відповідь (max 8 балів)</h3>
+            </div>
+            <div className="space-y-2">
+              {MATH_SLOTS.filter(n => n >= 19).map(num => (
+                <QuestionSlot key={num} num={num} question={getQuestion(num)}
+                  onEdit={() => setActiveSlot(num)} onDelete={deleteQuestion} />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ===== УКРАЇНСЬКА МОВА ===== */}
+      {subject === 'ukrainian' && (
+        <>
+          <div className="card">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="bg-[#e3f2fd] text-[#1565c0] text-xs font-bold px-2.5 py-1 rounded-full">Блок 1</span>
+              <h3 className="font-bold text-[#1a2e1a]">Питання 1–10 · 4 варіанти відповіді (А–Г)</h3>
+            </div>
+            <div className="space-y-2">
+              {UKR_SLOTS.filter(n => n <= 10).map(num => (
+                <QuestionSlot key={num} num={num} question={getQuestion(num)}
+                  onEdit={() => setActiveSlot(num)} onDelete={deleteQuestion} />
+              ))}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="bg-[#e8f5e9] text-[#2e7d32] text-xs font-bold px-2.5 py-1 rounded-full">Блок 2</span>
+              <h3 className="font-bold text-[#1a2e1a]">Питання 11–25 · 5 варіантів відповіді (А–Д)</h3>
+            </div>
+            <div className="space-y-2">
+              {UKR_SLOTS.filter(n => n >= 11 && n <= 25).map(num => (
+                <QuestionSlot key={num} num={num} question={getQuestion(num)}
+                  onEdit={() => setActiveSlot(num)} onDelete={deleteQuestion} />
+              ))}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="bg-[#fff8e1] text-[#f57f17] text-xs font-bold px-2.5 py-1 rounded-full">Блок 3</span>
+              <h3 className="font-bold text-[#1a2e1a]">Питання 26–30 · Логічні пари (до 4 балів кожне)</h3>
+            </div>
+            <div className="space-y-2">
+              {UKR_SLOTS.filter(n => n >= 26).map(num => (
+                <QuestionSlot key={num} num={num} question={getQuestion(num)}
+                  onEdit={() => setActiveSlot(num)} onDelete={deleteQuestion} />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Модальне вікно редагування */}
       {activeSlot !== null && (
@@ -156,10 +270,12 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
             onClick={e => e.stopPropagation()}
           >
             <QuestionForm
-              key={activeSlot}
+              key={`${subject}-${activeSlot}`}
               variantId={variant.id}
               num={activeSlot}
               type={getType(activeSlot)}
+              subject={subject}
+              optionCount={subject === 'ukrainian' && activeSlot <= 25 ? getUkrOptionCount(activeSlot) : 5}
               existing={getQuestion(activeSlot)}
               onSave={q => {
                 setQuestions(prev => [...prev.filter(x => x.number !== q.number), q]
@@ -176,31 +292,61 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
       {/* JSON довідка */}
       <div className="card bg-[#f8faf8] border-[#e8ede8]">
         <h3 className="font-bold text-[#1a2e1a] mb-3">📖 Формат JSON для імпорту</h3>
-        <div className="space-y-3 text-xs font-mono">
-          <div>
-            <p className="text-[#7a9a7a] mb-1">// Тип single (1–15):</p>
-            <pre className="bg-white border border-[#e8ede8] rounded-xl p-3 overflow-x-auto text-[#1a2e1a]">{`{ "number": 1, "type": "single", "topic": "Алгебра",
+        {subject === 'math' ? (
+          <div className="space-y-3 text-xs font-mono">
+            <div>
+              <p className="text-[#7a9a7a] mb-1">// Тип single (1–15):</p>
+              <pre className="bg-white border border-[#e8ede8] rounded-xl p-3 overflow-x-auto text-[#1a2e1a]">{`{ "number": 1, "type": "single", "topic": "Алгебра",
   "text": "Знайдіть $$x^2+2x$$ при x=3",
   "options": {"А":"9","Б":"12","В":"15","Г":"18","Д":"21"},
   "correct_single": "Г" }`}</pre>
-          </div>
-          <div>
-            <p className="text-[#7a9a7a] mb-1">// Тип matching (16–18):</p>
-            <pre className="bg-white border border-[#e8ede8] rounded-xl p-3 overflow-x-auto text-[#1a2e1a]">{`{ "number": 16, "type": "matching", "topic": "Функції",
+            </div>
+            <div>
+              <p className="text-[#7a9a7a] mb-1">// Тип matching (16–18):</p>
+              <pre className="bg-white border border-[#e8ede8] rounded-xl p-3 overflow-x-auto text-[#1a2e1a]">{`{ "number": 16, "type": "matching", "topic": "Функції",
   "text": "Встановіть відповідність",
   "left_items": [{"id":"1","text":"y=x²"},{"id":"2","text":"y=x"},{"id":"3","text":"y=1/x"}],
   "right_items": [{"id":"А","text":"пряма"},{"id":"Б","text":"гіпербола"},
     {"id":"В","text":"парабола"},{"id":"Г","text":"коло"},{"id":"Д","text":"синусоїда"}],
   "correct_matching": {"1":"В","2":"А","3":"Б"} }`}</pre>
-          </div>
-          <div>
-            <p className="text-[#7a9a7a] mb-1">// Тип open (19–22):</p>
-            <pre className="bg-white border border-[#e8ede8] rounded-xl p-3 overflow-x-auto text-[#1a2e1a]">{`{ "number": 19, "type": "open", "topic": "Рівняння",
+            </div>
+            <div>
+              <p className="text-[#7a9a7a] mb-1">// Тип open (19–22):</p>
+              <pre className="bg-white border border-[#e8ede8] rounded-xl p-3 overflow-x-auto text-[#1a2e1a]">{`{ "number": 19, "type": "open", "topic": "Рівняння",
   "text": "Розвяжіть $$2x-6=0$$",
   "correct_open": "3",
   "accepted_answers": ["3", "3.0"] }`}</pre>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-3 text-xs font-mono">
+            <div>
+              <p className="text-[#7a9a7a] mb-1">// Single з 4 варіантами (1–10):</p>
+              <pre className="bg-white border border-[#e8ede8] rounded-xl p-3 overflow-x-auto text-[#1a2e1a]">{`{ "number": 1, "type": "single", "topic": "Орфографія",
+  "text": "Букву е треба писати у рядку",
+  "options": {"А":"пр..тихо","Б":"пр..бирання","В":"пер..сторога","Г":"пр..гарно"},
+  "correct_single": "В" }`}</pre>
+            </div>
+            <div>
+              <p className="text-[#7a9a7a] mb-1">// Single з 5 варіантами (11–25):</p>
+              <pre className="bg-white border border-[#e8ede8] rounded-xl p-3 overflow-x-auto text-[#1a2e1a]">{`{ "number": 11, "type": "single", "topic": "Синтаксис",
+  "text": "Потребує редагування речення",
+  "options": {"А":"...","Б":"...","В":"...","Г":"...","Д":"..."},
+  "correct_single": "В" }`}</pre>
+            </div>
+            <div>
+              <p className="text-[#7a9a7a] mb-1">// Логічні пари / matching (26–30):</p>
+              <pre className="bg-white border border-[#e8ede8] rounded-xl p-3 overflow-x-auto text-[#1a2e1a]">{`{ "number": 26, "type": "matching", "topic": "Фразеологія",
+  "text": "Доберіть до кожного речення фразеологізм",
+  "left_items": [{"id":"1","text":"речення 1"},{"id":"2","text":"речення 2"},
+    {"id":"3","text":"речення 3"},{"id":"4","text":"речення 4"}],
+  "right_items": [{"id":"А","text":"лишатися з носом"},{"id":"Б","text":"лишатися осторонь"},
+    {"id":"В","text":"лишатися на місці"},{"id":"Г","text":"лишатися позаду"},
+    {"id":"Д","text":"лишатися на старих позиціях"}],
+  "correct_matching": {"1":"Д","2":"Б","3":"В","4":"Г"} }`}</pre>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -245,10 +391,12 @@ function QuestionSlot({ num, question, onEdit, onDelete }: {
   )
 }
 
-function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
+function QuestionForm({ variantId, num, type, subject, optionCount, existing, onSave, onCancel }: {
   variantId: string
   num: number
   type: string
+  subject: Subject
+  optionCount: 4 | 5
   existing: Question | null
   onSave: (q: Question) => void
   onCancel: () => void
@@ -258,21 +406,50 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
   const [text, setText] = useState(existing?.text ?? '')
   const [topic, setTopic] = useState(existing?.topic ?? '')
   const [imageUrl, setImageUrl] = useState(existing?.image_url ?? '')
-  const [options, setOptions] = useState((existing as any)?.options ?? { А: '', Б: '', В: '', Г: '', Д: '' })
+
+  // Single options — залежать від предмету і optionCount
+  const allOptions = ['А', 'Б', 'В', 'Г', 'Д'] as const
+  const activeOptions = allOptions.slice(0, optionCount)
+  const defaultOptions = Object.fromEntries(activeOptions.map(o => [o, '']))
+  const [options, setOptions] = useState((existing as any)?.options ?? defaultOptions)
   const [correctSingle, setCorrectSingle] = useState((existing as any)?.correct_single ?? 'А')
-  const [leftItems, setLeftItems] = useState((existing as any)?.left_items ?? [
-    { id: '1', text: '' }, { id: '2', text: '' }, { id: '3', text: '' }
-  ])
-  const [rightItems, setRightItems] = useState((existing as any)?.right_items ?? [
-    { id: 'А', text: '' }, { id: 'Б', text: '' }, { id: 'В', text: '' }, { id: 'Г', text: '' }, { id: 'Д', text: '' }
-  ])
-  const [correctMatching, setCorrectMatching] = useState<Record<string, string>>(
-    (existing as any)?.correct_matching ?? { '1': 'А', '2': 'Б', '3': 'В' }
+
+  // Matching — для укр. мови 4 пари (1–4 → А–Д), для мат. 3 пари
+  const matchingPairCount = subject === 'ukrainian' ? 4 : 3
+  const defaultLeftItems = Array.from({ length: matchingPairCount }, (_, i) => ({
+    id: String(i + 1), text: ''
+  }))
+  const defaultRightItems = [
+    { id: 'А', text: '' }, { id: 'Б', text: '' }, { id: 'В', text: '' },
+    { id: 'Г', text: '' }, { id: 'Д', text: '' }
+  ]
+  const defaultCorrectMatching = Object.fromEntries(
+    Array.from({ length: matchingPairCount }, (_, i) => [String(i + 1), allOptions[i]])
   )
+
+  const [leftItems, setLeftItems] = useState((existing as any)?.left_items ?? defaultLeftItems)
+  const [rightItems, setRightItems] = useState((existing as any)?.right_items ?? defaultRightItems)
+  const [correctMatching, setCorrectMatching] = useState<Record<string, string>>(
+    (existing as any)?.correct_matching ?? defaultCorrectMatching
+  )
+
+  // Open (тільки математика)
   const [correctOpen, setCorrectOpen] = useState((existing as any)?.correct_open ?? '')
   const [acceptedAnswers, setAcceptedAnswers] = useState(
     ((existing as any)?.accepted_answers ?? []).join(', ')
   )
+
+  function getTypeLabel() {
+    if (type === 'open') return 'Вписати відповідь'
+    if (type === 'matching') return subject === 'ukrainian' ? 'Логічні пари' : 'Відповідності'
+    return 'Вибір відповіді'
+  }
+
+  function getScoreLabel() {
+    if (type === 'open') return '2 бали'
+    if (type === 'matching') return subject === 'ukrainian' ? 'до 4 балів' : 'до 3 балів'
+    return '1 бал'
+  }
 
   async function handleSave() {
     setSaving(true)
@@ -305,19 +482,17 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
 
   return (
     <div className="p-6">
-      {/* Заголовок модалки */}
+      {/* Заголовок */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <span className="w-10 h-10 rounded-xl bg-[#0ead69] text-white flex items-center justify-center font-bold">
+          <span className={`w-10 h-10 rounded-xl text-white flex items-center justify-center font-bold ${
+            subject === 'ukrainian' ? 'bg-[#1565c0]' : 'bg-[#0ead69]'
+          }`}>
             {num}
           </span>
           <div>
-            <h3 className="font-bold text-[#1a2e1a]">
-              {type === 'single' ? 'Вибір відповіді' : type === 'matching' ? 'Відповідності' : 'Вписати відповідь'}
-            </h3>
-            <p className="text-xs text-[#7a9a7a]">
-              {type === 'single' ? '1 бал' : type === 'matching' ? 'до 3 балів' : '2 бали'}
-            </p>
+            <h3 className="font-bold text-[#1a2e1a]">{getTypeLabel()}</h3>
+            <p className="text-xs text-[#7a9a7a]">{getScoreLabel()}</p>
           </div>
         </div>
         <button onClick={onCancel} className="text-[#7a9a7a] hover:text-[#1a2e1a] text-xl font-bold w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#f5f7f5]">
@@ -330,11 +505,14 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
         {/* Текст питання */}
         <div>
           <label className="block text-sm font-medium text-[#445544] mb-1.5">
-            Умова задачі (LaTeX через $$...$$)
+            {subject === 'ukrainian' ? 'Умова завдання' : 'Умова задачі (LaTeX через $$...$$)'}
           </label>
           <textarea value={text} onChange={e => setText(e.target.value)}
             className="input resize-none font-mono text-sm" rows={3}
-            placeholder="Текст питання. Формули: $$x^2 + y^2 = r^2$$" />
+            placeholder={subject === 'ukrainian'
+              ? 'Текст завдання'
+              : 'Текст питання. Формули: $$x^2 + y^2 = r^2$$'
+            } />
           {text && (
             <div className="mt-2 p-3 bg-[#f8faf8] rounded-xl border border-[#e8ede8] text-sm">
               <p className="text-xs text-[#7a9a7a] mb-1">Перегляд:</p>
@@ -347,7 +525,8 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
         <div>
           <label className="block text-sm font-medium text-[#445544] mb-1.5">Тема</label>
           <input type="text" value={topic} onChange={e => setTopic(e.target.value)}
-            className="input" placeholder="Алгебра, Геометрія..." />
+            className="input"
+            placeholder={subject === 'ukrainian' ? 'Орфографія, Синтаксис...' : 'Алгебра, Геометрія...'} />
         </div>
 
         {/* Зображення */}
@@ -360,10 +539,10 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
         {type === 'single' && (
           <div>
             <label className="block text-sm font-medium text-[#445544] mb-2">
-              Варіанти (клікни на літеру щоб позначити правильну)
+              Варіанти — {optionCount} відповіді (клікни на літеру щоб позначити правильну)
             </label>
             <div className="space-y-2">
-              {(['А', 'Б', 'В', 'Г', 'Д'] as const).map(opt => (
+              {activeOptions.map(opt => (
                 <div key={opt} className="flex items-center gap-3">
                   <button type="button" onClick={() => setCorrectSingle(opt)}
                     className={`w-9 h-9 rounded-xl font-bold text-sm flex-shrink-0 border-2 transition-all ${
@@ -371,7 +550,7 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
                         ? 'bg-[#0ead69] text-white border-[#0ead69]'
                         : 'bg-white text-[#556655] border-[#e8ede8] hover:border-[#0ead69]'
                     }`}>{opt}</button>
-                  <input type="text" value={options[opt]}
+                  <input type="text" value={options[opt] ?? ''}
                     onChange={e => setOptions((p: any) => ({ ...p, [opt]: e.target.value }))}
                     className="input text-sm" placeholder={`Варіант ${opt}`} />
                 </div>
@@ -385,7 +564,9 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-[#445544] mb-2">Ліва колонка (1–3)</label>
+                <label className="block text-sm font-medium text-[#445544] mb-2">
+                  Ліва колонка (1–{matchingPairCount})
+                </label>
                 <div className="space-y-2">
                   {leftItems.map((item: any, i: number) => (
                     <div key={item.id} className="flex gap-2 items-center">
@@ -424,8 +605,10 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-[#445544] mb-2">Правильні відповідності</label>
-              <div className="flex gap-4">
+              <label className="block text-sm font-medium text-[#445544] mb-2">
+                Правильні відповідності ({matchingPairCount} пари, по 1 балу кожна)
+              </label>
+              <div className="flex gap-4 flex-wrap">
                 {leftItems.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-2">
                     <span className="text-sm font-medium text-[#1a2e1a]">{item.id} →</span>
@@ -441,7 +624,7 @@ function QuestionForm({ variantId, num, type, existing, onSave, onCancel }: {
           </div>
         )}
 
-        {/* Open */}
+        {/* Open — тільки математика */}
         {type === 'open' && (
           <div className="space-y-4">
             <div>

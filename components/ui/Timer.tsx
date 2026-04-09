@@ -43,7 +43,7 @@ export default function Timer({ startedAt, timeLimitMin, onWarning }: TimerProps
     : 'text-[#c62828] bg-[#ffebee] border-[#ffcdd2] animate-pulse'
 
   return (
-    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border font-mono font-bold text-lg transition-all ${colorClass}`}>
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-mono font-bold text-base transition-all ${colorClass}`}>
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
         <circle cx="7" cy="7" r="6"/>
         <path d="M7 4v3l2 2"/>

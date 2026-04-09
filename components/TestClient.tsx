@@ -167,37 +167,41 @@ export default function TestClient({ variant, questions, userId }: Props) {
 
       {/* Шапка тесту */}
       <header className="bg-white border-b border-[#e8ede8] sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[#1a2e1a] text-sm truncate">{variant.title}</p>
-            <p className="text-xs text-[#7a9a7a]">відповіді: {answeredCount}/{questions.length}</p>
+        <div className="max-w-4xl mx-auto px-4">
+          {/* Рядок 1: назва + лічильник */}
+          <div className="flex items-center justify-between gap-2 pt-2.5 pb-1.5">
+            <p className="font-semibold text-[#1a2e1a] text-sm truncate flex-1 min-w-0">{variant.title}</p>
+            <p className="text-xs text-[#7a9a7a] flex-shrink-0">відповіді: {answeredCount}/{questions.length}</p>
           </div>
 
-          <Timer
-            startedAt={startedAt}
-            timeLimitMin={variant.time_limit}
-            onWarning={handleWarning}
-          />
+          {/* Рядок 2: таймер + матеріали + завершити — однакова висота */}
+          <div className="flex gap-2 pb-2">
+            <div className="flex-shrink-0">
+              <Timer
+                startedAt={startedAt}
+                timeLimitMin={variant.time_limit}
+                onWarning={handleWarning}
+              />
+            </div>
+            <a
+              href="/materials"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center text-xs font-semibold text-[#1565c0] bg-[#e3f2fd] border border-[#bbdefb] px-3 rounded-xl hover:bg-[#bbdefb] transition-colors"
+            >
+              📚 Матеріали
+            </a>
+            <button
+              onClick={() => setShowConfirm(true)}
+              disabled={submitting}
+              className="flex-1 btn-primary text-xs"
+            >
+              {submitting ? 'Збереження...' : 'Завершити спробу'}
+            </button>
+          </div>
 
-          <a
-            href="/materials"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs font-semibold text-[#1565c0] bg-[#e3f2fd] border border-[#bbdefb] px-3 py-2 rounded-xl hover:bg-[#bbdefb] transition-colors"
-          >
-            📚 Матеріали
-          </a>
-
-          <button
-            onClick={() => setShowConfirm(true)}
-            disabled={submitting}
-            className="btn-primary text-xs py-2"
-          >
-            {submitting ? 'Збереження...' : 'Завершити спробу'}
-          </button>
-        </div>
-
-        <div className="max-w-4xl mx-auto px-4 pb-3 flex gap-1.5 flex-wrap">
+          {/* Рядок 3: номери питань */}
+          <div className="grid grid-cols-8 md:grid-cols-14 lg:grid-cols-18 gap-1.5 pb-2.5">
           {questions.map((question, i) => {
             const a = answers[question.id]
             const hasAnswer = a && (
@@ -209,7 +213,7 @@ export default function TestClient({ variant, questions, userId }: Props) {
               <button
                 key={question.id}
                 onClick={() => setCurrent(i)}
-                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                className={`h-8 rounded-lg text-xs font-bold transition-all ${
                   i === current
                     ? 'bg-[#0ead69] text-white ring-2 ring-[#0ead69] ring-offset-1'
                     : hasAnswer
@@ -221,6 +225,7 @@ export default function TestClient({ variant, questions, userId }: Props) {
               </button>
             )
           })}
+          </div>
         </div>
       </header>
 
