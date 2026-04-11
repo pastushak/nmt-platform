@@ -16,6 +16,7 @@ export default async function TestsPage() {
   const { data: allVariants } = await supabase
     .from('variants')
     .select('*')
+    .eq('subject', 'math')   // ← тільки математика
     .order('created_at', { ascending: true })
 
   const { data: attempts } = await supabase

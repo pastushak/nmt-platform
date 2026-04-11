@@ -10,6 +10,8 @@ export interface User {
 
 export type QuestionType = 'single' | 'matching' | 'open'
 
+export type Subject = 'math' | 'ukrainian'
+
 export interface Variant {
   id: string
   title: string
@@ -18,6 +20,7 @@ export interface Variant {
   is_published: boolean
   created_by: string
   created_at: string
+  subject: Subject
 }
 
 export interface SingleQuestion {
@@ -28,7 +31,7 @@ export interface SingleQuestion {
   text: string
   image_url: string | null
   topic: string
-  options: { А: string; Б: string; В: string; Г: string; Д: string }
+  options: { А: string; Б: string; В: string; Г: string; Д?: string }
   correct_single: 'А' | 'Б' | 'В' | 'Г' | 'Д'
 }
 

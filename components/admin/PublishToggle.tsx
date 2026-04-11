@@ -8,9 +8,10 @@ interface Props {
   variantId: string
   isPublished: boolean
   disabled?: boolean
+  requiredCount?: number
 }
 
-export default function PublishToggle({ variantId, isPublished, disabled }: Props) {
+export default function PublishToggle({ variantId, isPublished, disabled, requiredCount = 22 }: Props) {
   const [published, setPublished] = useState(isPublished)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -32,7 +33,7 @@ export default function PublishToggle({ variantId, isPublished, disabled }: Prop
     <button
       onClick={toggle}
       disabled={loading || (disabled && !published)}
-      title={disabled && !published ? 'Спочатку додайте всі 22 питання' : ''}
+      title={disabled && !published ? `Спочатку додайте всі ${requiredCount} питань` : ''}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
         published ? 'bg-[#0ead69]' : 'bg-[#e8ede8]'
       } ${disabled && !published ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}

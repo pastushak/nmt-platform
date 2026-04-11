@@ -5,7 +5,7 @@ import Link from 'next/link'
 import LogoutButton from '@/components/ui/LogoutButton'
 
 interface Props {
-  currentPage: 'home' | 'tests' | 'stats' | 'materials'
+  currentPage: 'home' | 'tests' | 'stats' | 'materials' | 'set'
   userName?: string
 }
 
@@ -14,6 +14,7 @@ export default function StudentHeader({ currentPage, userName }: Props) {
 
   const links = [
     { href: '/tests', label: 'Тести', key: 'tests' },
+    { href: '/set', label: 'Сет НМТ', key: 'set' },
     { href: '/stats', label: 'Статистика', key: 'stats' },
     { href: '/materials', label: 'Матеріали', key: 'materials' },
   ]

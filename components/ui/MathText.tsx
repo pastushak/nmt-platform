@@ -4,11 +4,13 @@ import katex from 'katex'
 import 'katex/dist/katex.min.css'
 
 interface MathTextProps {
-  text: string
+  text: string | undefined | null
   className?: string
 }
 
 export default function MathText({ text, className = '' }: MathTextProps) {
+  if (!text) return null
+
   const parts = text.split(/(\$\$[^$]+\$\$)/g)
 
   const rendered = parts.map((part, i) => {

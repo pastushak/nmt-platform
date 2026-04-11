@@ -35,14 +35,21 @@ export default async function VariantsPage() {
     aMap[a.variant_id] = (aMap[a.variant_id] ?? 0) + 1
   }
 
+  function getRequiredCount(subject?: string) {
+    return subject === 'ukrainian' ? 30 : 22
+  }
+
   return (
     <div className="min-h-screen bg-[#f5f7f5]">
-      <AdminHeader currentPage="dashboard" userName={profile?.name} />
+      <AdminHeader currentPage="variants" userName={profile?.name} />
 
       <main className="max-w-6xl mx-auto px-6 py-8">
-        <div className="mb-6">
-          <h1 className="page-title mb-1">Варіанти</h1>
-          <p className="text-sm text-[#7a9a7a]">{variants?.length ?? 0} варіантів</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="page-title mb-1">Варіанти</h1>
+            <p className="text-sm text-[#7a9a7a]">{variants?.length ?? 0} варіантів</p>
+          </div>
+          <Link href="/admin/variants/new" className="btn-primary">+ Новий варіант</Link>
         </div>
 
         {!variants?.length ? (
@@ -58,7 +65,9 @@ export default async function VariantsPage() {
             {variants.map(variant => {
               const qCount = qMap[variant.id] ?? 0
               const aCount = aMap[variant.id] ?? 0
-              const isComplete = qCount === 22
+              const required = getRequiredCount(variant.subject)
+              const isComplete = qCount === required
+              const subjectLabel = variant.subject === 'ukrainian' ? '🇺🇦 Укр. мова' : '📐 Математика'
 
               return (
                 <div key={variant.id} className="card">
@@ -66,13 +75,16 @@ export default async function VariantsPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
                         <h2 className="font-bold text-[#1a2e1a]">{variant.title}</h2>
+                        <span className="text-xs bg-[#f0f7f0] text-[#556655] px-2 py-0.5 rounded-full font-medium">
+                          {subjectLabel}
+                        </span>
                         {variant.is_published ? (
                           <span className="badge-done">Опубліковано</span>
                         ) : (
                           <span className="badge-locked">Чернетка</span>
                         )}
                         {!isComplete && (
-                          <span className="badge-warning">{qCount}/22 питань</span>
+                          <span className="badge-warning">{qCount}/{required} питань</span>
                         )}
                       </div>
                       {variant.description && (
@@ -80,7 +92,7 @@ export default async function VariantsPage() {
                       )}
                       <div className="flex items-center gap-4 text-xs text-[#7a9a7a]">
                         <span>⏱ {variant.time_limit} хв</span>
-                        <span>📝 {qCount}/22 питань</span>
+                        <span>📝 {qCount}/{required} питань</span>
                         <span>📊 {aCount} спроб</span>
                         <span>{new Date(variant.created_at).toLocaleDateString('uk-UA')}</span>
                       </div>
@@ -95,6 +107,7 @@ export default async function VariantsPage() {
                           variantId={variant.id}
                           isPublished={variant.is_published}
                           disabled={!isComplete}
+                          requiredCount={required}
                         />
                       </div>
                       <Link
@@ -115,4 +128,3 @@ export default async function VariantsPage() {
     </div>
   )
 }
-
