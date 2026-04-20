@@ -61,11 +61,10 @@ function CardGrid({ items, accent }: { items: { title: string; content: string }
   const titleColor = accent === 'green' ? 'text-[#1a2e1a]' : 'text-[#3d1f5c]'
 
   return (
-    <div style={{ columns: '3', columnGap: '16px' }}>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {items.map(item => (
         <div
           key={item.title}
-          style={{ breakInside: 'avoid', marginBottom: '16px' }}
           className={`bg-white rounded-2xl border ${borderColor} p-4`}
         >
           <h3 className={`text-sm font-bold ${titleColor} mb-3 pb-2 border-b ${titleBorder}`}>
