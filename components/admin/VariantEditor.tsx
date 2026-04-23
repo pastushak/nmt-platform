@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase'
 import { Question, Variant } from '@/lib/types'
 import MathText from '@/components/ui/MathText'
 import ImageUpload from '@/components/ui/ImageUpload'
+import RichTextInput from '@/components/ui/RichTextInput'
 
 type Subject = 'math' | 'ukrainian'
 
@@ -414,6 +415,9 @@ function QuestionForm({ variantId, num, type, subject, optionCount, existing, on
   const [options, setOptions] = useState((existing as any)?.options ?? defaultOptions)
   const [correctSingle, setCorrectSingle] = useState((existing as any)?.correct_single ?? 'А')
 
+  // Стан для ImageUpload під конкретним варіантом (null = не показуємо)
+  const [openImageOption, setOpenImageOption] = useState<string | null>(null)
+
   // Matching — для укр. мови 4 пари (1–4 → А–Д), для мат. 3 пари
   const matchingPairCount = subject === 'ukrainian' ? 4 : 3
   const defaultLeftItems = Array.from({ length: matchingPairCount }, (_, i) => ({
@@ -439,6 +443,9 @@ function QuestionForm({ variantId, num, type, subject, optionCount, existing, on
     ((existing as any)?.accepted_answers ?? []).join(', ')
   )
 
+  // Для укр. мови показуємо укр. інструменти (наголос/апостроф)
+  const ukrTools = subject === 'ukrainian'
+
   function getTypeLabel() {
     if (type === 'open') return 'Вписати відповідь'
     if (type === 'matching') return subject === 'ukrainian' ? 'Логічні пари' : 'Відповідності'
@@ -449,6 +456,16 @@ function QuestionForm({ variantId, num, type, subject, optionCount, existing, on
     if (type === 'open') return '2 бали'
     if (type === 'matching') return subject === 'ukrainian' ? 'до 4 балів' : 'до 3 балів'
     return '1 бал'
+  }
+
+  /** Додає Markdown-зображення до тексту варіанту */
+  function attachImageToOption(opt: string, url: string) {
+    setOptions((p: any) => {
+      const current = p[opt] ?? ''
+      const sep = current.trim() ? '\n\n' : ''
+      return { ...p, [opt]: `${current}${sep}![](${url})` }
+    })
+    setOpenImageOption(null)
   }
 
   async function handleSave() {
@@ -507,12 +524,17 @@ function QuestionForm({ variantId, num, type, subject, optionCount, existing, on
           <label className="block text-sm font-medium text-[#445544] mb-1.5">
             {subject === 'ukrainian' ? 'Умова завдання' : 'Умова задачі (LaTeX через $$...$$)'}
           </label>
-          <textarea value={text} onChange={e => setText(e.target.value)}
-            className="input resize-none font-mono text-sm" rows={3}
+          <RichTextInput
+            value={text}
+            onChange={setText}
+            rows={4}
+            showUkrainianTools={ukrTools}
+            showTableButton={true}
             placeholder={subject === 'ukrainian'
               ? 'Текст завдання'
               : 'Текст питання. Формули: $$x^2 + y^2 = r^2$$'
-            } />
+            }
+          />
           {text && (
             <div className="mt-2 p-3 bg-[#f8faf8] rounded-xl border border-[#e8ede8] text-sm">
               <p className="text-xs text-[#7a9a7a] mb-1">Перегляд:</p>
@@ -529,7 +551,7 @@ function QuestionForm({ variantId, num, type, subject, optionCount, existing, on
             placeholder={subject === 'ukrainian' ? 'Орфографія, Синтаксис...' : 'Алгебра, Геометрія...'} />
         </div>
 
-        {/* Зображення */}
+        {/* Зображення до питання */}
         <ImageUpload
           currentUrl={imageUrl || null}
           onUpload={url => setImageUrl(url ?? '')}
@@ -541,18 +563,48 @@ function QuestionForm({ variantId, num, type, subject, optionCount, existing, on
             <label className="block text-sm font-medium text-[#445544] mb-2">
               Варіанти — {optionCount} відповіді (клікни на літеру щоб позначити правильну)
             </label>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {activeOptions.map(opt => (
-                <div key={opt} className="flex items-center gap-3">
+                <div key={opt} className="flex items-start gap-3">
                   <button type="button" onClick={() => setCorrectSingle(opt)}
-                    className={`w-9 h-9 rounded-xl font-bold text-sm flex-shrink-0 border-2 transition-all ${
+                    className={`w-9 h-9 mt-1 rounded-xl font-bold text-sm flex-shrink-0 border-2 transition-all ${
                       correctSingle === opt
                         ? 'bg-[#0ead69] text-white border-[#0ead69]'
                         : 'bg-white text-[#556655] border-[#e8ede8] hover:border-[#0ead69]'
                     }`}>{opt}</button>
-                  <input type="text" value={options[opt] ?? ''}
-                    onChange={e => setOptions((p: any) => ({ ...p, [opt]: e.target.value }))}
-                    className="input text-sm" placeholder={`Варіант ${opt}`} />
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <RichTextInput
+                      value={options[opt] ?? ''}
+                      onChange={v => setOptions((p: any) => ({ ...p, [opt]: v }))}
+                      rows={2}
+                      compact={true}
+                      showUkrainianTools={ukrTools}
+                      placeholder={`Варіант ${opt}`}
+                    />
+                    {/* Кнопка додати зображення до варіанту */}
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setOpenImageOption(openImageOption === opt ? null : opt)}
+                        className="text-xs text-[#0ead69] hover:text-[#0c9a5a] font-medium"
+                      >
+                        {openImageOption === opt ? '✕ Сховати' : '🖼 Додати зображення'}
+                      </button>
+                      {openImageOption === opt && (
+                        <div className="mt-2 p-3 bg-[#f8faf8] rounded-xl border border-[#e8ede8]">
+                          <ImageUpload
+                            currentUrl={null}
+                            onUpload={url => {
+                              if (url) attachImageToOption(opt, url)
+                            }}
+                          />
+                          <p className="text-xs text-[#7a9a7a] mt-2">
+                            Після завантаження зображення буде додано до варіанту у форматі <code>![](url)</code>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -569,17 +621,24 @@ function QuestionForm({ variantId, num, type, subject, optionCount, existing, on
                 </label>
                 <div className="space-y-2">
                   {leftItems.map((item: any, i: number) => (
-                    <div key={item.id} className="flex gap-2 items-center">
-                      <span className="w-7 h-7 bg-[#0ead69] text-white rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    <div key={item.id} className="flex gap-2 items-start">
+                      <span className="w-7 h-7 mt-1 bg-[#0ead69] text-white rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">
                         {item.id}
                       </span>
-                      <input type="text" value={item.text}
-                        onChange={e => {
-                          const u = [...leftItems]
-                          u[i] = { ...item, text: e.target.value }
-                          setLeftItems(u)
-                        }}
-                        className="input text-sm" placeholder={`Твердження ${item.id}`} />
+                      <div className="flex-1 min-w-0">
+                        <RichTextInput
+                          value={item.text}
+                          onChange={v => {
+                            const u = [...leftItems]
+                            u[i] = { ...item, text: v }
+                            setLeftItems(u)
+                          }}
+                          rows={2}
+                          compact={true}
+                          showUkrainianTools={ukrTools}
+                          placeholder={`Твердження ${item.id}`}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -588,17 +647,24 @@ function QuestionForm({ variantId, num, type, subject, optionCount, existing, on
                 <label className="block text-sm font-medium text-[#445544] mb-2">Права колонка (А–Д)</label>
                 <div className="space-y-2">
                   {rightItems.map((item: any, i: number) => (
-                    <div key={item.id} className="flex gap-2 items-center">
-                      <span className="w-7 h-7 bg-[#f5f7f5] text-[#556655] rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    <div key={item.id} className="flex gap-2 items-start">
+                      <span className="w-7 h-7 mt-1 bg-[#f5f7f5] text-[#556655] rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0">
                         {item.id}
                       </span>
-                      <input type="text" value={item.text}
-                        onChange={e => {
-                          const u = [...rightItems]
-                          u[i] = { ...item, text: e.target.value }
-                          setRightItems(u)
-                        }}
-                        className="input text-sm" placeholder={`Варіант ${item.id}`} />
+                      <div className="flex-1 min-w-0">
+                        <RichTextInput
+                          value={item.text}
+                          onChange={v => {
+                            const u = [...rightItems]
+                            u[i] = { ...item, text: v }
+                            setRightItems(u)
+                          }}
+                          rows={2}
+                          compact={true}
+                          showUkrainianTools={ukrTools}
+                          placeholder={`Варіант ${item.id}`}
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
