@@ -99,11 +99,14 @@ export default function RichTextInput({
         <button type="button" onClick={() => wrap('**')} title="Жирний (Ctrl+B)" className={btnClass}>
           <strong>Б</strong>
         </button>
-        <button type="button" onClick={() => wrap('*')} title="Курсив (Ctrl+I)" className={btnClass}>
+        <button type="button" onClick={() => wrap('<em>', '</em>')} title="Курсив (Ctrl+I)" className={btnClass}>
           <em>К</em>
         </button>
         <button type="button" onClick={() => wrap('<u>', '</u>')} title="Підкреслення" className={btnClass}>
           <u>П</u>
+        </button>
+        <button type="button" onClick={() => insert('  \n')} title="Новий рядок (Shift+Enter)" className={btnClass}>
+          ↵
         </button>
 
         {showUkrainianTools && (
@@ -199,7 +202,10 @@ export default function RichTextInput({
             wrap('**')
           } else if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
             e.preventDefault()
-            wrap('*')
+            wrap('<em>', '</em>')
+          } else if (e.shiftKey && e.key === 'Enter') {
+            e.preventDefault()
+            insert('  \n')
           }
         }}
         className="w-full px-3 py-2 text-sm font-mono resize-none focus:outline-none bg-white"
