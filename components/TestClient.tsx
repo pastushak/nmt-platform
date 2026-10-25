@@ -18,6 +18,8 @@ interface Props {
   userId: string
   /** Незавершена спроба, яку треба продовжити */
   resume?: { id: string; startedAt: number; answers: Record<string, AnswerState> } | null
+  /** Час сервера на момент рендера — щоб таймер не залежав від годинника пристрою */
+  serverNow?: number
 }
 
 type AnswerState = {
@@ -27,10 +29,12 @@ type AnswerState = {
   answer_open?: string
 }
 
-export default function TestClient({ variant, questions, userId, resume = null }: Props) {
+export default function TestClient({ variant, questions, userId, resume = null, serverNow }: Props) {
   const router = useRouter()
   const [attemptId, setAttemptId] = useState<string | null>(resume?.id ?? null)
-  const [startedAt, setStartedAt] = useState<number>(resume?.startedAt ?? Date.now())
+  // Зсув годинника пристрою відносно сервера; час старту з БД переводимо в «час пристрою»
+  const [skew] = useState(() => (serverNow ? serverNow - Date.now() : 0))
+  const [startedAt, setStartedAt] = useState<number>(() => resume ? resume.startedAt - skew : Date.now())
   const [answers, setAnswers] = useState<Record<string, AnswerState>>(resume?.answers ?? {})
   const [current, setCurrent] = useState(0)
   const [submitting, setSubmitting] = useState(false)
@@ -50,8 +54,8 @@ export default function TestClient({ variant, questions, userId, resume = null }
       .single()
     if (data) {
       setAttemptId(data.id)
-      // Час старту ставить база — таймер рахуємо від нього
-      setStartedAt(new Date(data.started_at).getTime())
+      // База ставить started_at = now(); таймер рахуємо від моменту старту на пристрої
+      setStartedAt(Date.now())
     } else {
       toast.error('Не вдалося розпочати спробу. Оновіть сторінку.')
     }

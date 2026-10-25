@@ -189,6 +189,35 @@ const sr = (await q(`select * from public.set_attempts where id='${SET}'`))[0]
 ok(sr.status === 'done' && sr.math_score_total === 15 && sr.math_nmt_score === 147 && sr.ukrainian_score_total === 24 && sr.ukrainian_nmt_score === 149,
    'сет: математика 15→147, українська 24→149', JSON.stringify({ m: sr.math_score_total, mn: sr.math_nmt_score, u: sr.ukrainian_score_total, un: sr.ukrainian_nmt_score }))
 
+// --- виправлення після рев'ю ---
+await as(S2, async () => {
+  const leak = await tryq(`insert into public.set_attempts (student_id,math_variant_id,ukrainian_variant_id) values ('${S2}','${VM}','${VT}')`)
+  ok(!!leak.err, 'сет із неправильним варіантом (тематичним) не створюється')
+  const leak2 = await tryq(`insert into public.set_attempts (student_id,math_variant_id,ukrainian_variant_id) values ('${S2}','${VH}','${VU}')`)
+  ok(!!leak2.err, 'сет з чернеткою не створюється')
+  ok((await q(`select id from public.questions where variant_id='${VM}'`)).length === 0, 'S2 так і не бачить відповідей VM')
+  const hid = await tryq(`insert into public.attempts (student_id,variant_id) values ('${S2}','${VH}')`)
+  ok(!!hid.err, 'спробу на чернетку не створити')
+  // '−2,5' з типографським мінусом і табуляцією — правильна відповідь на питання з correct_open '-2.5'
+})
+await db.exec(`update public.questions set correct_open='-2.5', accepted_answers=null where variant_id='${VM}' and number=22`)
+await as(S2, async () => {
+  const a = (await q(`insert into public.attempts (student_id,variant_id) values ('${S2}','${VM}') returning id`))[0].id
+  await q(`select public.submit_attempt($1, $2::jsonb)`, [a, JSON.stringify({ [await qid(VM, 22)]: { answer_open: '\t−2,5 ' } })])
+  const r = (await q(`select score_open from public.attempts where id='${a}'`))[0]
+  ok(r.score_open === 2, 'відповідь «−2,5» зараховано за correct_open «-2.5»', JSON.stringify(r))
+  // українська через /test: шкала української
+  const u = (await q(`insert into public.attempts (student_id,variant_id) values ('${S2}','${VU}') returning id`))[0].id
+  const ua = {}; for (let n = 1; n <= 10; n++) ua[await qid(VU, n)] = { answer_single: 'Б' }
+  await q(`select public.submit_attempt($1, $2::jsonb)`, [u, JSON.stringify(ua)])
+  const ur = (await q(`select score_total, nmt_score from public.attempts where id='${u}'`))[0]
+  ok(ur.score_total === 10 && ur.nmt_score === 110, 'українська: 10 балів → 110 за шкалою української', JSON.stringify(ur))
+})
+await as(T, async () => {
+  const ta = (await q(`insert into public.attempts (student_id,variant_id) values ('${T}','${VH}') returning started_at, status`))[0]
+  ok(ta.started_at !== null && ta.status === 'in_progress', 'вчитель: спроба отримує started_at і статус', JSON.stringify(ta))
+})
+
 // --- вчитель ---
 await as(T, async () => {
   ok((await q(`select id from public.questions`)).length === 22 + 30 + 2 + 1, 'вчитель бачить усі питання')

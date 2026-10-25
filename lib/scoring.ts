@@ -28,7 +28,8 @@ export function scoreMatching(
 
 export function scoreOpen(student: string | null, accepted: string[]): number {
   if (!student) return 0
-  const norm = (s: string) => s.trim().toLowerCase().replace(',', '.')
+  // Та сама нормалізація, що й у БД (score_answer): усі коми → крапки, '−' → '-'
+  const norm = (s: string) => s.trim().toLowerCase().replace(/,/g, '.').replace(/−/g, '-')
   return accepted.map(norm).includes(norm(student)) ? 2 : 0
 }
 

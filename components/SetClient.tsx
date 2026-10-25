@@ -22,6 +22,8 @@ interface Props {
   userId: string
   savedMathAnswers: Record<string, any>
   savedUkrainianAnswers: Record<string, any>
+  /** Час сервера на момент рендера — щоб таймер не залежав від годинника пристрою */
+  serverNow?: number
 }
 
 function restoreAnswers(saved: Record<string, any>): Record<string, SetAnswerState> {
@@ -38,7 +40,9 @@ export default function SetClient({
   userId,
   savedMathAnswers,
   savedUkrainianAnswers,
+  serverNow,
 }: Props) {
+  const [skew] = useState(() => (serverNow ? serverNow - Date.now() : 0))
   const [activeSubject, setActiveSubject] = useState<Subject>('math')
   const [mathAnswers, setMathAnswers] = useState<Record<string, SetAnswerState>>(
     restoreAnswers(savedMathAnswers)
@@ -201,7 +205,7 @@ export default function SetClient({
           <div className="flex gap-2 pb-2">
             <div className="flex-shrink-0">
               <Timer
-                startedAt={startedAt}
+                startedAt={startedAt - skew}
                 timeLimitMin={120}
                 onWarning={handleWarning}
                 onExpire={handleExpire}

@@ -28,9 +28,10 @@ $$;
 
 
 -- ---------- 2. Оцінювання однієї відповіді (та сама логіка, що була в lib/scoring.ts) ----------
+drop function if exists public.score_answer(text, text, jsonb, jsonb, text, jsonb, text);
 create or replace function public.score_answer(
   q_type text, correct_single text, correct_matching jsonb, accepted jsonb,
-  a_single text, a_matching jsonb, a_open text)
+  a_single text, a_matching jsonb, a_open text, correct_open text default null)
 returns integer language plpgsql immutable as $$
 declare
   pts integer := 0;
@@ -40,17 +41,21 @@ begin
   if q_type = 'single' then
     return case when a_single is not null and a_single = correct_single then 1 else 0 end;
   elsif q_type = 'matching' then
-    if a_matching is null or correct_matching is null then return 0; end if;
+    if a_matching is null or correct_matching is null
+       or jsonb_typeof(a_matching) <> 'object' or jsonb_typeof(correct_matching) <> 'object' then return 0; end if;
     for k in select jsonb_object_keys(correct_matching) loop
       if (a_matching ->> k) = (correct_matching ->> k) then pts := pts + 1; end if;
     end loop;
     return pts;
   elsif q_type = 'open' then
-    if a_open is null or accepted is null then return 0; end if;
-    norm := replace(replace(lower(btrim(a_open)), ',', '.'), '−', '-');
+    if a_open is null then return 0; end if;
+    accepted := coalesce(accepted, '[]'::jsonb);
+    if jsonb_typeof(accepted) <> 'array' then accepted := '[]'::jsonb; end if;
+    if correct_open is not null then accepted := accepted || to_jsonb(correct_open); end if;
+    norm := replace(replace(lower(regexp_replace(a_open, '^\s+|\s+$', '', 'g')), ',', '.'), '−', '-');
     if exists (
       select 1 from jsonb_array_elements_text(accepted) v
-      where replace(replace(lower(btrim(v)), ',', '.'), '−', '-') = norm
+      where replace(replace(lower(regexp_replace(v, '^\s+|\s+$', '', 'g')), ',', '.'), '−', '-') = norm
     ) then return 2; end if;
     return 0;
   end if;
@@ -110,17 +115,23 @@ security definer
 set search_path = public
 as $$
 begin
-  if auth.uid() is null or public.is_teacher()
-     or current_setting('app.scoring', true) = '1' then
+  if auth.uid() is null or current_setting('app.scoring', true) = '1' then
     return new;
   end if;
 
   if tg_op = 'INSERT' then
+    -- Час старту ставить база для всіх (від нього рахується дедлайн)
     new.status := 'in_progress';
     new.started_at := now();
     new.finished_at := null;
+    if public.is_teacher() then return new; end if;
+    if not exists (select 1 from public.variants v where v.id = new.variant_id and v.is_published) then
+      raise exception 'Варіант недоступний' using errcode = '42501';
+    end if;
     new.score_single := 0; new.score_matching := 0; new.score_open := 0;
     new.score_total := 0;  new.nmt_score := null;
+  elsif public.is_teacher() then
+    return new;
   else
     -- Будь-які зміни учня поза submit_attempt ігноруються
     new := old;
@@ -162,9 +173,10 @@ as $$
     where a.id = p_attempt_id
       and a.student_id = auth.uid()
       and a.status = 'in_progress'
-      and now() <= a.started_at + make_interval(mins => coalesce(v.time_limit, 60) + 2)
+      and now() <= a.started_at + make_interval(mins => coalesce(v.time_limit, 60)::int + 2)
   );
 $$;
+revoke all on function public.attempt_is_open(uuid) from public;
 grant execute on function public.attempt_is_open(uuid) to authenticated;
 
 create policy answers_own_select on public.answers
@@ -213,7 +225,7 @@ begin
   end if;
 
   select * into var from public.variants where id = att.variant_id;
-  in_time := now() <= att.started_at + make_interval(mins => coalesce(var.time_limit, 60) + 2);
+  in_time := now() <= att.started_at + make_interval(mins => coalesce(var.time_limit, 60)::int + 2);
 
   -- Свіжі відповіді з браузера приймаємо лише вчасно; інакше рахуємо збережені
   if in_time and p_answers is not null then
@@ -235,14 +247,14 @@ begin
 
   -- Оцінюємо кожне питання варіанта (рядок відповіді створюємо і для пропущених)
   for q in
-    select qq.id, qq.type, qq.correct_single,
+    select qq.id, qq.type, qq.correct_single, qq.correct_open::text as co,
            to_jsonb(qq.correct_matching) as cm, to_jsonb(qq.accepted_answers) as acc,
            an.answer_single, to_jsonb(an.answer_matching) as am, an.answer_open
     from public.questions qq
     left join public.answers an on an.attempt_id = att.id and an.question_id = qq.id
     where qq.variant_id = att.variant_id
   loop
-    s := public.score_answer(q.type, q.correct_single, q.cm, q.acc, q.answer_single, q.am, q.answer_open);
+    s := public.score_answer(q.type, q.correct_single, q.cm, q.acc, q.answer_single, q.am, q.answer_open, q.co);
     if q.type = 'single' then s_single := s_single + s;
     elsif q.type = 'matching' then s_matching := s_matching + s;
     else s_open := s_open + s; end if;
@@ -255,12 +267,13 @@ begin
   perform set_config('app.scoring', '1', true);
   update public.attempts set
     status = 'done',
-    finished_at = least(now(), att.started_at + make_interval(mins => coalesce(var.time_limit, 60) + 2)),
+    finished_at = least(now(), att.started_at + make_interval(mins => coalesce(var.time_limit, 60)::int + 2)),
     score_single = s_single,
     score_matching = s_matching,
     score_open = s_open,
     score_total = s_single + s_matching + s_open,
     nmt_score = case when var.kind = 'topic' then null
+                     when var.subject = 'ukrainian' then public.nmt_ukr_score(s_single + s_matching + s_open)
                      else public.nmt_math_score(s_single + s_matching + s_open) end
   where id = att.id;
   perform set_config('app.scoring', '', true);
@@ -282,23 +295,32 @@ language plpgsql
 security definer
 set search_path = public
 as $$
-declare
-  nulls jsonb;
 begin
-  if auth.uid() is null or public.is_teacher()
-     or current_setting('app.scoring', true) = '1' then
+  if auth.uid() is null or current_setting('app.scoring', true) = '1' then
     return new;
   end if;
 
   if tg_op = 'INSERT' then
-    select coalesce(jsonb_object_agg(k, null), '{}'::jsonb) into nulls
-    from jsonb_object_keys(to_jsonb(new)) k where k like '%score%';
-    new := jsonb_populate_record(new, nulls);
     new.status := 'in_progress';
     new.started_at := now();
     new.finished_at := null;
+    if public.is_teacher() then return new; end if;
+    -- Лише опублікований повний варіант математики + опублікований варіант української
+    if not exists (select 1 from public.variants v where v.id = new.math_variant_id
+                   and v.is_published and v.subject = 'math' and coalesce(v.kind, 'full') = 'full')
+       or not exists (select 1 from public.variants v where v.id = new.ukrainian_variant_id
+                      and v.is_published and v.subject = 'ukrainian') then
+      raise exception 'Невірний варіант' using errcode = '42501';
+    end if;
+    new.math_answers := null; new.ukrainian_answers := null;
+    new.math_score_single := 0; new.math_score_matching := 0; new.math_score_open := 0;
+    new.math_score_total := 0;  new.math_nmt_score := null;
+    new.ukrainian_score_single := 0; new.ukrainian_score_matching := 0;
+    new.ukrainian_score_total := 0;  new.ukrainian_nmt_score := null;
     return new;
   end if;
+
+  if public.is_teacher() then return new; end if;
 
   -- UPDATE: лише відповіді, лише в незавершеному сеті й до кінця часу (120 хв + 2)
   if old.status = 'in_progress' and now() <= old.started_at + interval '122 minutes' then
@@ -346,24 +368,24 @@ begin
   u_ans := coalesce(case when in_time then p_ukr end, to_jsonb(st.ukrainian_answers), '{}'::jsonb);
 
   for q in
-    select id, type, correct_single, to_jsonb(correct_matching) cm, to_jsonb(accepted_answers) acc
+    select id, type, correct_single, correct_open::text co, to_jsonb(correct_matching) cm, to_jsonb(accepted_answers) acc
     from public.questions where variant_id = st.math_variant_id
   loop
     s := public.score_answer(q.type, q.correct_single, q.cm, q.acc,
            m_ans -> q.id::text ->> 'answer_single', m_ans -> q.id::text -> 'answer_matching',
-           m_ans -> q.id::text ->> 'answer_open');
+           m_ans -> q.id::text ->> 'answer_open', q.co);
     if q.type = 'single' then m_single := m_single + s;
     elsif q.type = 'matching' then m_matching := m_matching + s;
     else m_open := m_open + s; end if;
   end loop;
 
   for q in
-    select id, type, correct_single, to_jsonb(correct_matching) cm, to_jsonb(accepted_answers) acc
+    select id, type, correct_single, correct_open::text co, to_jsonb(correct_matching) cm, to_jsonb(accepted_answers) acc
     from public.questions where variant_id = st.ukrainian_variant_id
   loop
     s := public.score_answer(q.type, q.correct_single, q.cm, q.acc,
            u_ans -> q.id::text ->> 'answer_single', u_ans -> q.id::text -> 'answer_matching',
-           u_ans -> q.id::text ->> 'answer_open');
+           u_ans -> q.id::text ->> 'answer_open', q.co);
     if q.type = 'matching' then u_matching := u_matching + s;
     else u_single := u_single + s; end if;
   end loop;

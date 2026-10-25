@@ -71,8 +71,10 @@ export default function SetResultsClient({
     }
     if (q.type === 'open') {
       if (!answerData.answer_open) return 0
-      const norm = (s: string) => s.trim().toLowerCase().replace(',', '.')
-      return (q.accepted_answers ?? []).map(norm).includes(norm(answerData.answer_open)) ? 2 : 0
+      // Та сама нормалізація, що й у БД (score_answer)
+      const norm = (s: string) => s.trim().toLowerCase().replace(/,/g, '.').replace(/−/g, '-')
+      const accepted = [...(q.accepted_answers ?? []), ...(q.correct_open ? [q.correct_open] : [])]
+      return accepted.map(norm).includes(norm(answerData.answer_open)) ? 2 : 0
     }
     if (q.type === 'matching') {
       const ans = answerData.answer_matching ?? {}

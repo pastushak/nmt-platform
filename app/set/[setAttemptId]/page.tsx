@@ -66,6 +66,7 @@ export default async function SetAttemptPage({
       userId={user.id}
       savedMathAnswers={attempt.math_answers ?? {}}
       savedUkrainianAnswers={attempt.ukrainian_answers ?? {}}
+      serverNow={Date.now()}
     />
   )
 }

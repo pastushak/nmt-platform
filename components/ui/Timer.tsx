@@ -14,6 +14,9 @@ export default function Timer({ startedAt, timeLimitMin, onWarning, onExpire }: 
   const [remaining, setRemaining] = useState(timeLimitMin * 60)
   const [warned, setWarned] = useState<Set<number>>(new Set())
   const expiredRef = useRef(false)
+  const onExpireRef = useRef(onExpire)
+  onExpireRef.current = onExpire
+  useEffect(() => { expiredRef.current = false }, [startedAt])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -21,9 +24,9 @@ export default function Timer({ startedAt, timeLimitMin, onWarning, onExpire }: 
       const left = Math.max(0, timeLimitMin * 60 - elapsed)
       setRemaining(left)
 
-      if (left === 0 && !expiredRef.current) {
+      if (left === 0 && onExpireRef.current && !expiredRef.current) {
         expiredRef.current = true
-        onExpire?.()
+        onExpireRef.current()
       }
 
       const minutesLeft = Math.floor(left / 60)
@@ -37,7 +40,7 @@ export default function Timer({ startedAt, timeLimitMin, onWarning, onExpire }: 
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [startedAt, timeLimitMin, onWarning, onExpire, warned])
+  }, [startedAt, timeLimitMin, onWarning, warned])
 
   const minutes = Math.floor(remaining / 60)
   const seconds = remaining % 60

@@ -71,6 +71,7 @@ export default async function TestPage({
       questions={questions}
       userId={user.id}
       resume={resume}
+      serverNow={Date.now()}
     />
   )
 }
