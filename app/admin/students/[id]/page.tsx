@@ -4,6 +4,8 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import StudentDetailCharts from '@/components/admin/StudentDetailCharts'
 import DeleteAttemptButton from '@/components/admin/DeleteAttemptButton'
 import AdminHeader from '@/components/admin/AdminHeader'
+import { isCurrentSeason, seasonLabel } from '@/lib/season'
+import { getLayout, maxScore } from '@/lib/variant-layout'
 
 export const revalidate = 0
 
@@ -29,12 +31,16 @@ export default async function StudentDetailPage({
     .from('users').select('*').eq('id', params.id).single()
   if (!student) notFound()
 
-  const { data: attempts } = await supabase
+  const { data: allAttempts } = await supabase
     .from('attempts')
-    .select('*, variants(title)')
+    .select('*, variants(title, kind, layout)')
     .eq('student_id', params.id)
     .eq('status', 'done')
     .order('finished_at', { ascending: true })
+
+  // Повні варіанти НМТ — для графіка й історії; тематичні — окремим списком
+  const attempts = (allAttempts ?? []).filter(a => (a.variants as any)?.kind !== 'topic')
+  const topicAttempts = (allAttempts ?? []).filter(a => (a.variants as any)?.kind === 'topic').reverse()
 
   // Статистика класу для порівняння
   const { data: classAttempts } = await supabase
@@ -54,7 +60,7 @@ export default async function StudentDetailPage({
   }
 
   // Топ помилок
-  const attemptIds = (attempts ?? []).map(a => a.id)
+  const attemptIds = (allAttempts ?? []).map(a => a.id)
   const topMistakes: { qid: string; count: number; question: any }[] = []
 
   if (attemptIds.length > 0) {
@@ -135,6 +141,13 @@ export default async function StudentDetailPage({
                   <h1 className="text-xl font-bold text-[#1a2e1a]">{student.name}</h1>
                   {student.is_verified && <span className="text-[#0ead69]">✔</span>}
                   {!student.is_active && <span className="badge-locked">заблоковано</span>}
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                    isCurrentSeason(student.season)
+                      ? 'bg-[#e8f5e9] text-[#2e7d32]'
+                      : 'bg-[#e3f2fd] text-[#1565c0]'
+                  }`}>
+                    {seasonLabel(student.season)}{isCurrentSeason(student.season) ? '' : ' · архів'}
+                  </span>
                 </div>
                 <p className="text-sm text-[#7a9a7a]">{student.email}</p>
                 <p className="text-xs text-[#aec5ae] mt-0.5">
@@ -150,6 +163,29 @@ export default async function StudentDetailPage({
             </div>
           </div>
         </div>
+
+        {/* Тематичні тести */}
+        {topicAttempts.length > 0 && (
+          <div className="card">
+            <h2 className="font-bold text-[#1a2e1a] mb-3">🎯 Тематичні тести · {topicAttempts.length} спроб</h2>
+            <div className="space-y-1.5">
+              {topicAttempts.map(a => {
+                const max = maxScore(getLayout(a.variants as any))
+                const pct = max ? Math.round((a.score_total / max) * 100) : 0
+                return (
+                  <div key={a.id} className="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-[#f5f7f5]">
+                    <span className="text-[#1a2e1a] truncate">{(a.variants as any)?.title}</span>
+                    <span className="flex items-center gap-3 flex-shrink-0">
+                      <span className="text-xs text-[#7a9a7a]">{new Date(a.finished_at!).toLocaleDateString('uk-UA')}</span>
+                      <span className="font-mono text-[#556655]">{a.score_total}/{max}</span>
+                      <span className={`font-bold w-12 text-right ${pct >= 80 ? 'text-[#2e7d32]' : pct >= 50 ? 'text-[#f57f17]' : 'text-red-500'}`}>{pct}%</span>
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Зведені показники */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">

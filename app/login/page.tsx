@@ -13,8 +13,9 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
 
-  const isBlocked = typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('blocked') === '1'
+  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+  const isBlocked = params?.get('blocked') === '1'
+  const isArchived = params?.get('archived') === '1'
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -69,7 +70,7 @@ export default function LoginPage() {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-[#1a2e1a] tracking-tight">НМТ Математика</h1>
-          <p className="text-[#7a9a7a] text-sm mt-1">Платформа підготовки 2026</p>
+          <p className="text-[#7a9a7a] text-sm mt-1">Платформа підготовки до НМТ</p>
         </div>
 
         {/* Картка форми */}
@@ -79,6 +80,13 @@ export default function LoginPage() {
           {isBlocked && (
             <div className="bg-orange-50 border border-orange-200 text-orange-700 px-4 py-3 rounded-xl text-sm mb-4">
               ⚠️ Ваш акаунт деактивовано. Зверніться до викладача.
+            </div>
+          )}
+
+          {isArchived && (
+            <div className="bg-[#e3f2fd] border border-[#bbdefb] text-[#1565c0] px-4 py-3 rounded-xl text-sm mb-4">
+              🎓 Ваш сезон підготовки завершено, акаунт перенесено в архів.
+              Якщо ви готуєтесь до НМТ цього року — зверніться до викладача.
             </div>
           )}
 

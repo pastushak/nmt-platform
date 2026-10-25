@@ -7,16 +7,14 @@ import { Question, Variant } from '@/lib/types'
 import MathText from '@/components/ui/MathText'
 import ImageUpload from '@/components/ui/ImageUpload'
 import RichTextInput from '@/components/ui/RichTextInput'
+import {
+  Layout, MATH_TOPICS, POINTS, blockRanges, getLayout, isTopicVariant,
+  maxScore, rangeLabel, totalQuestions, typeForNumber,
+} from '@/lib/variant-layout'
 
 type Subject = 'math' | 'ukrainian'
 
-// ---- Math config ----
-const MATH_SLOTS = Array.from({ length: 22 }, (_, i) => i + 1)
-function getMathType(num: number) {
-  if (num <= 15) return 'single'
-  if (num <= 18) return 'matching'
-  return 'open'
-}
+// ---- Math config: структура береться з lib/variant-layout (повний 15/3/4 або тематична) ----
 
 // ---- Ukrainian config ----
 const UKR_SLOTS = Array.from({ length: 30 }, (_, i) => i + 1)
@@ -45,8 +43,41 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
   const router = useRouter()
   const supabase = createClient()
 
-  const slots = subject === 'math' ? MATH_SLOTS : UKR_SLOTS
-  const getType = subject === 'math' ? getMathType : getUkrType
+  // Тематичний тест: власна структура питань
+  const isTopic = isTopicVariant(variant)
+  const [layout, setLayout] = useState<Layout>(getLayout(variant))
+  const [draftLayout, setDraftLayout] = useState<Layout>(getLayout(variant))
+  const [topic, setTopic] = useState(variant.topic ?? '')
+  const [settingsSaving, setSettingsSaving] = useState(false)
+  const [settingsMsg, setSettingsMsg] = useState<string | null>(null)
+
+  const getType = subject === 'math'
+    ? (num: number) => typeForNumber(num, layout)
+    : getUkrType
+
+  async function saveTopicSettings() {
+    setSettingsMsg(null)
+    if (!topic.trim()) { setSettingsMsg('Вкажіть тему'); return }
+    if (totalQuestions(draftLayout) === 0) { setSettingsMsg('Потрібне хоча б одне питання'); return }
+    // Питання, які після зміни структури опинились би не в тому блоці або поза тестом
+    const total = totalQuestions(draftLayout)
+    const conflicts = questions
+      .filter(q => q.number > total || typeForNumber(q.number, draftLayout) !== q.type)
+      .map(q => q.number)
+    if (conflicts.length) {
+      setSettingsMsg(`Спершу видаліть або перенесіть питання №${conflicts.join(', ')} — вони не вписуються в нову структуру`)
+      return
+    }
+    setSettingsSaving(true)
+    const { error } = await supabase.from('variants')
+      .update({ topic: topic.trim(), layout: draftLayout })
+      .eq('id', variant.id)
+    setSettingsSaving(false)
+    if (error) { setSettingsMsg('Помилка збереження: ' + error.message); return }
+    setLayout(draftLayout)
+    setSettingsMsg('✓ Збережено')
+    router.refresh()
+  }
 
   function getQuestion(num: number) {
     return questions.find(q => q.number === num) ?? null
@@ -105,7 +136,58 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
   return (
     <div className="space-y-6">
 
+      {/* Налаштування тематичного тесту */}
+      {isTopic && (
+        <div className="card border-2 border-[#ffe082] space-y-4">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="bg-[#fff8e1] text-[#f57f17] text-xs font-bold px-2.5 py-1 rounded-full">🎯 Тематичний тест</span>
+            <span className="text-xs text-[#7a9a7a]">
+              📐 Математика · {totalQuestions(layout)} питань · max {maxScore(layout)} балів · {variant.time_limit} хв
+            </span>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[#445544] mb-1.5">Тема</label>
+            <input
+              type="text"
+              list="math-topics-editor"
+              value={topic}
+              onChange={e => setTopic(e.target.value)}
+              className="input"
+            />
+            <datalist id="math-topics-editor">
+              {MATH_TOPICS.map(t => <option key={t} value={t} />)}
+            </datalist>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {([
+              ['single', 'Вибір відповіді'],
+              ['matching', 'Відповідності'],
+              ['open', 'Вписати відповідь'],
+            ] as const).map(([key, label]) => (
+              <div key={key}>
+                <p className="text-xs text-[#7a9a7a] mb-1">{label} · {POINTS[key]} б.</p>
+                <input
+                  type="number" min={0} max={30}
+                  value={draftLayout[key]}
+                  onChange={e => setDraftLayout(l => ({ ...l, [key]: Math.max(0, Math.min(30, Number(e.target.value) || 0)) }))}
+                  className="input"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button onClick={saveTopicSettings} disabled={settingsSaving} className="btn-primary text-sm">
+              {settingsSaving ? 'Збереження...' : 'Зберегти налаштування'}
+            </button>
+            {settingsMsg && (
+              <span className={`text-sm ${settingsMsg.startsWith('✓') ? 'text-[#0ead69]' : 'text-red-600'}`}>{settingsMsg}</span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Перемикач предмету */}
+      {!isTopic && (
       <div className="card">
         <div className="flex items-center gap-4 flex-wrap">
           <span className="text-sm font-semibold text-[#445544]">Предмет:</span>
@@ -142,6 +224,7 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
           </div>
         </div>
       </div>
+      )}
 
       {/* Кнопки дій */}
       <div className="flex gap-3">
@@ -173,48 +256,38 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
       )}
 
       {/* ===== МАТЕМАТИКА ===== */}
-      {subject === 'math' && (
-        <>
-          <div className="card">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="bg-[#e8f5e9] text-[#2e7d32] text-xs font-bold px-2.5 py-1 rounded-full">Блок 1</span>
-              <h3 className="font-bold text-[#1a2e1a]">Питання 1–15 · Вибір однієї правильної (max 15 балів)</h3>
-            </div>
-            <div className="space-y-2">
-              {MATH_SLOTS.filter(n => n <= 15).map(num => (
-                <QuestionSlot key={num} num={num} question={getQuestion(num)}
-                  onEdit={() => setActiveSlot(num)} onDelete={deleteQuestion} />
-              ))}
-            </div>
-          </div>
+      {subject === 'math' && (() => {
+        const r = blockRanges(layout)
+        const blocks = [
+          r.single && {
+            range: r.single, badge: 'bg-[#e8f5e9] text-[#2e7d32]',
+            title: `Вибір однієї правильної (max ${layout.single * POINTS.single} балів)`,
+          },
+          r.matching && {
+            range: r.matching, badge: 'bg-[#e3f2fd] text-[#1565c0]',
+            title: `Відповідності (max ${layout.matching * POINTS.matching} балів)`,
+          },
+          r.open && {
+            range: r.open, badge: 'bg-[#fff8e1] text-[#f57f17]',
+            title: `Вписати відповідь (max ${layout.open * POINTS.open} балів)`,
+          },
+        ].filter(Boolean) as { range: { from: number; to: number }; badge: string; title: string }[]
 
-          <div className="card">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="bg-[#e3f2fd] text-[#1565c0] text-xs font-bold px-2.5 py-1 rounded-full">Блок 2</span>
-              <h3 className="font-bold text-[#1a2e1a]">Питання 16–18 · Відповідності (max 9 балів)</h3>
+        return blocks.map((b, i) => (
+          <div key={i} className="card">
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <span className={`${b.badge} text-xs font-bold px-2.5 py-1 rounded-full`}>Блок {i + 1}</span>
+              <h3 className="font-bold text-[#1a2e1a]">Питання {rangeLabel(b.range)} · {b.title}</h3>
             </div>
             <div className="space-y-2">
-              {MATH_SLOTS.filter(n => n >= 16 && n <= 18).map(num => (
+              {Array.from({ length: b.range.to - b.range.from + 1 }, (_, k) => b.range.from + k).map(num => (
                 <QuestionSlot key={num} num={num} question={getQuestion(num)}
                   onEdit={() => setActiveSlot(num)} onDelete={deleteQuestion} />
               ))}
             </div>
           </div>
-
-          <div className="card">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="bg-[#fff8e1] text-[#f57f17] text-xs font-bold px-2.5 py-1 rounded-full">Блок 3</span>
-              <h3 className="font-bold text-[#1a2e1a]">Питання 19–22 · Вписати відповідь (max 8 балів)</h3>
-            </div>
-            <div className="space-y-2">
-              {MATH_SLOTS.filter(n => n >= 19).map(num => (
-                <QuestionSlot key={num} num={num} question={getQuestion(num)}
-                  onEdit={() => setActiveSlot(num)} onDelete={deleteQuestion} />
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+        ))
+      })()}
 
       {/* ===== УКРАЇНСЬКА МОВА ===== */}
       {subject === 'ukrainian' && (
@@ -278,6 +351,7 @@ export default function VariantEditor({ variant, initialQuestions }: Props) {
               subject={subject}
               optionCount={subject === 'ukrainian' && activeSlot <= 25 ? getUkrOptionCount(activeSlot) : 5}
               existing={getQuestion(activeSlot)}
+              defaultTopic={isTopic ? topic : undefined}
               onSave={q => {
                 setQuestions(prev => [...prev.filter(x => x.number !== q.number), q]
                   .sort((a, b) => a.number - b.number))
@@ -392,20 +466,21 @@ function QuestionSlot({ num, question, onEdit, onDelete }: {
   )
 }
 
-function QuestionForm({ variantId, num, type, subject, optionCount, existing, onSave, onCancel }: {
+function QuestionForm({ variantId, num, type, subject, optionCount, existing, defaultTopic, onSave, onCancel }: {
   variantId: string
   num: number
   type: string
   subject: Subject
   optionCount: 4 | 5
   existing: Question | null
+  defaultTopic?: string
   onSave: (q: Question) => void
   onCancel: () => void
 }) {
   const supabase = createClient()
   const [saving, setSaving] = useState(false)
   const [text, setText] = useState(existing?.text ?? '')
-  const [topic, setTopic] = useState(existing?.topic ?? '')
+  const [topic, setTopic] = useState(existing?.topic ?? defaultTopic ?? '')
   const [imageUrl, setImageUrl] = useState(existing?.image_url ?? '')
 
   // Single options — залежать від предмету і optionCount

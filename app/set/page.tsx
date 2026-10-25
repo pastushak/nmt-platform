@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { requireStudentAccess } from '@/lib/access'
 import StudentHeader from '@/components/StudentHeader'
 import SetLauncher from '@/components/SetLauncher'
 import Footer from '@/components/ui/Footer'
@@ -8,6 +9,7 @@ export default async function SetPage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+  await requireStudentAccess(supabase, user.id)
 
   const { data: profile } = await supabase.rpc('get_my_profile')
   if (profile?.role === 'teacher') redirect('/admin')
@@ -17,6 +19,7 @@ export default async function SetPage() {
     .from('variants')
     .select('id, title')
     .eq('subject', 'math')
+    .eq('kind', 'full') // тематичні тести не беруть участі в сеті
     .eq('is_published', true)
 
   const { data: ukrainianVariants } = await supabase

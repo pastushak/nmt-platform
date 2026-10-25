@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { requireStudentAccess } from '@/lib/access'
 import StatsCharts from '@/components/stats/StatsCharts'
 import StudentHeader from '@/components/StudentHeader'
 import Footer from '@/components/ui/Footer'
@@ -9,6 +10,7 @@ export default async function StatsPage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+  await requireStudentAccess(supabase, user.id)
 
   const { data: profile } = await supabase
     .from('users')
@@ -20,7 +22,7 @@ export default async function StatsPage() {
 
   const { data: myAttempts } = await supabase
     .from('attempts')
-    .select('*, variants(title)')
+    .select('*, variants(title, kind)')
     .eq('student_id', user.id)
     .eq('status', 'done')
     .order('finished_at', { ascending: true })
@@ -42,8 +44,9 @@ export default async function StatsPage() {
     classAvg[vid] = Math.round(scores.reduce((s, x) => s + x, 0) / scores.length)
   }
 
-  const attempts = myAttempts ?? []
-  const attemptIds = attempts.map(a => a.id)
+  // Графік і історія — тільки повні варіанти; помилки за темами — з усіх спроб (і тематичних теж)
+  const attempts = (myAttempts ?? []).filter(a => (a.variants as any)?.kind !== 'topic')
+  const attemptIds = (myAttempts ?? []).map(a => a.id)
 
   const nmtScores = attempts.filter(a => a.nmt_score).map(a => a.nmt_score!)
   const best = nmtScores.length ? Math.max(...nmtScores) : null

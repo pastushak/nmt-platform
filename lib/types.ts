@@ -6,6 +6,7 @@ export interface User {
   email: string
   role: UserRole
   created_at: string
+  season?: string | null
 }
 
 export type QuestionType = 'single' | 'matching' | 'open'
@@ -21,6 +22,9 @@ export interface Variant {
   created_by: string
   created_at: string
   subject: Subject
+  kind?: 'full' | 'topic'
+  topic?: string | null
+  layout?: { single: number; matching: number; open: number } | null
 }
 
 export interface SingleQuestion {

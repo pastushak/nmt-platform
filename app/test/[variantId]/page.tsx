@@ -1,5 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { requireStudentAccess } from '@/lib/access'
 import TestClient from '@/components/TestClient'
 
 export default async function TestPage({
@@ -10,6 +11,7 @@ export default async function TestPage({
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+  await requireStudentAccess(supabase, user.id)
 
   const { data: variant } = await supabase
     .from('variants')

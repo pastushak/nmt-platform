@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import AdminHeader from '@/components/admin/AdminHeader'
 import AdminDashboardCharts from '@/components/admin/AdminDashboardCharts'
+import { CURRENT_SEASON_FILTER, seasonLabel, safeIds, chunk } from '@/lib/season'
 
 export default async function AdminPage() {
   const supabase = createServerSupabaseClient()
@@ -17,17 +18,23 @@ export default async function AdminPage() {
   const { count: variantsCount } = await supabase
     .from('variants').select('*', { count: 'exact', head: true })
 
-  const { count: studentsCount } = await supabase
-    .from('users').select('*', { count: 'exact', head: true }).eq('role', 'student')
+  // Учні поточного сезону — уся статистика дашборду рахується тільки по них
+  const { data: seasonStudents } = await supabase
+    .from('users').select('id').eq('role', 'student').or(CURRENT_SEASON_FILTER)
+  const studentIdList = (seasonStudents ?? []).map(s => s.id)
+  const sIds = safeIds(studentIdList)
+  const studentsCount = studentIdList.length
 
   const { count: attemptsCount } = await supabase
-    .from('attempts').select('*', { count: 'exact', head: true }).eq('status', 'done')
+    .from('attempts').select('*', { count: 'exact', head: true })
+    .eq('status', 'done').in('student_id', sIds)
 
   // --- Останні результати + середній бал по варіантах ---
   const { data: recentAttempts } = await supabase
     .from('attempts')
-    .select('*, users(name), variants(title)')
+    .select('*, users(name), variants(title, kind)')
     .eq('status', 'done')
+    .in('student_id', sIds)
     .order('finished_at', { ascending: false })
     .limit(8)
 
@@ -35,6 +42,7 @@ export default async function AdminPage() {
     .from('attempts')
     .select('variant_id, nmt_score, variants(title), finished_at, started_at, student_id')
     .eq('status', 'done')
+    .in('student_id', sIds)
     .not('nmt_score', 'is', null)
 
   // Середній бал по варіантах
@@ -117,10 +125,18 @@ export default async function AdminPage() {
     .sort((a, b) => b.best - a.best)
 
   // --- Статистика по темах (топ 8 тем з найбільшою кількістю помилок) ---
-  const { data: wrongAnswers } = await supabase
-    .from('answers')
-    .select('question_id')
-    .eq('score', 0)
+  // Відповіді лише зі спроб учнів поточного сезону
+  const { data: seasonAttemptRows } = await supabase
+    .from('attempts').select('id').eq('status', 'done').in('student_id', sIds)
+  const seasonAttemptIds = (seasonAttemptRows ?? []).map(a => a.id)
+
+  const seasonAnswers: { question_id: string; score: number }[] = []
+  for (const part of chunk(seasonAttemptIds)) {
+    const { data } = await supabase
+      .from('answers').select('question_id, score').in('attempt_id', part)
+    seasonAnswers.push(...(data ?? []))
+  }
+  const wrongAnswers = seasonAnswers.filter(a => a.score === 0)
 
   const mistakeCount: Record<string, number> = {}
   for (const a of wrongAnswers ?? []) {
@@ -149,9 +165,7 @@ export default async function AdminPage() {
     }
 
     // Підрахуємо загальну кількість відповідей по темах
-    const { data: allAnswers } = await supabase
-      .from('answers')
-      .select('question_id')
+    const allAnswers = seasonAnswers
 
     const answerCount: Record<string, number> = {}
     for (const a of allAnswers ?? []) {
@@ -188,7 +202,11 @@ export default async function AdminPage() {
 
         <div>
           <h1 className="page-title mb-1">Дашборд</h1>
-          <p className="text-sm text-[#7a9a7a]">Загальний огляд платформи</p>
+          <p className="text-sm text-[#7a9a7a]">
+            Поточний сезон: <span className="font-semibold text-[#1a2e1a]">{seasonLabel(null)}</span>
+            {' · '}
+            <Link href="/admin/archive" className="text-[#0ead69] font-semibold">Архів сезонів →</Link>
+          </p>
         </div>
 
         {/* Зведені показники */}
@@ -266,7 +284,9 @@ export default async function AdminPage() {
                       <p className="text-xs text-[#7a9a7a]">{(a.variants as any)?.title}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-[#0ead69]">{a.nmt_score ?? '—'}</p>
+                      <p className="font-bold text-[#0ead69]">
+                        {(a.variants as any)?.kind === 'topic' ? `${a.score_total} б.` : (a.nmt_score ?? '—')}
+                      </p>
                       <p className="text-xs text-[#7a9a7a]">
                         {new Date(a.finished_at!).toLocaleDateString('uk-UA')}
                       </p>

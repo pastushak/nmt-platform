@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { MAX_SCORES } from '@/lib/scoring'
+import { isTopicVariant, POINTS } from '@/lib/variant-layout'
 import SingleQuestionComponent from '@/components/questions/SingleQuestion'
 import MatchingQuestionComponent from '@/components/questions/MatchingQuestion'
 import OpenQuestionComponent from '@/components/questions/OpenQuestion'
@@ -91,15 +92,25 @@ export default function ResultsClient({ attempt, questions, answers, durationMin
   const [explainCount, setExplainCount] = useState(0)
 
   const answerMap = Object.fromEntries(answers.map((a: any) => [a.question_id, a]))
+  const isTopic = isTopicVariant(attempt.variants)
   const nmtScore = attempt.nmt_score
   const total = attempt.score_total
-  const percent = Math.round((total / MAX_SCORES.total) * 100)
+  // Для тематичного тесту максимум рахуємо з фактичних питань
+  const maxTotal = isTopic
+    ? questions.reduce((s: number, q: any) => s + (POINTS[q.type as keyof typeof POINTS] ?? 0), 0)
+    : MAX_SCORES.total
+  const percent = maxTotal ? Math.round((total / maxTotal) * 100) : 0
 
   const durationStr = durationMin != null
     ? durationMin < 60
       ? `${durationMin} хв`
       : `${Math.floor(durationMin / 60)} год ${durationMin % 60} хв`
     : null
+
+  const pctColor = percent >= 80 ? 'text-[#2e7d32]'
+    : percent >= 60 ? 'text-[#0ead69]'
+    : percent >= 40 ? 'text-[#f57f17]'
+    : 'text-red-500'
 
   const nmtColor = !nmtScore ? 'text-[#7a9a7a]'
     : nmtScore >= 180 ? 'text-[#2e7d32]'
@@ -112,8 +123,8 @@ export default function ResultsClient({ attempt, questions, answers, durationMin
 
       <header className="bg-white border-b border-[#e8ede8] px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <Link href="/tests" className="text-sm text-[#7a9a7a] hover:text-[#1a2e1a] transition-colors">
-            ← До тестів
+          <Link href={isTopic ? '/topics' : '/tests'} className="text-sm text-[#7a9a7a] hover:text-[#1a2e1a] transition-colors">
+            {isTopic ? '← До тем' : '← До тестів'}
           </Link>
           <h1 className="font-bold text-[#1a2e1a]">Результати тесту</h1>
           <Link href="/stats" className="text-sm text-[#0ead69] font-semibold hover:text-[#0c9a5a]">
@@ -127,16 +138,31 @@ export default function ResultsClient({ attempt, questions, answers, durationMin
         {/* Загальний результат */}
         <div className="bg-gradient-to-br from-[#f0faf2] to-[#e8f5ff] rounded-2xl border border-[#e8ede8] p-8 text-center">
           <p className="text-sm text-[#7a9a7a] font-medium mb-2">{attempt.variants?.title}</p>
-          <div className={`text-7xl font-black my-4 tracking-tight ${nmtColor}`}>
-            {nmtScore ?? '—'}
-          </div>
-          <p className="text-[#7a9a7a] text-sm mb-6">
-            {nmtScore ? 'балів НМТ · шкала 100–200' : 'Нижче порогового балу (менше 5 тестових балів)'}
-          </p>
+          {isTopic ? (
+            <>
+              <div className={`text-7xl font-black my-4 tracking-tight ${pctColor}`}>
+                {percent}%
+              </div>
+              <p className="text-[#7a9a7a] text-sm mb-6">
+                {percent >= 80 ? 'Тему засвоєно добре 💪'
+                  : percent >= 50 ? 'Непогано — переглянь помилки нижче'
+                  : 'Варто повторити тему й пройти тест ще раз'}
+              </p>
+            </>
+          ) : (
+            <>
+              <div className={`text-7xl font-black my-4 tracking-tight ${nmtColor}`}>
+                {nmtScore ?? '—'}
+              </div>
+              <p className="text-[#7a9a7a] text-sm mb-6">
+                {nmtScore ? 'балів НМТ · шкала 100–200' : 'Нижче порогового балу (менше 5 тестових балів)'}
+              </p>
+            </>
+          )}
           <div className="max-w-sm mx-auto mb-2">
             <div className="flex justify-between text-sm mb-1.5">
               <span className="text-[#7a9a7a]">Тестовий бал</span>
-              <span className="font-bold text-[#1a2e1a]">{total} / {MAX_SCORES.total}</span>
+              <span className="font-bold text-[#1a2e1a]">{total} / {maxTotal}</span>
             </div>
             <div className="h-3 bg-white rounded-full border border-[#e8ede8] overflow-hidden">
               <div
@@ -235,8 +261,8 @@ export default function ResultsClient({ attempt, questions, answers, durationMin
           <Link href={`/test/${attempt.variant_id}`} className="btn-secondary">
             🔄 Пройти знову
           </Link>
-          <Link href="/tests" className="btn-primary">
-            Інші тести →
+          <Link href={isTopic ? '/topics' : '/tests'} className="btn-primary">
+            {isTopic ? 'Інші теми →' : 'Інші тести →'}
           </Link>
         </div>
       </main>

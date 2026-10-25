@@ -1,13 +1,16 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { requireStudentAccess } from '@/lib/access'
 import StudentHeader from '@/components/StudentHeader'
 import Footer from '@/components/ui/Footer'
+import { seasonLabel } from '@/lib/season'
 
 export default async function HomePage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+  await requireStudentAccess(supabase, user.id)
 
   const { data: profile } = await supabase
     .from('users')
@@ -20,18 +23,30 @@ export default async function HomePage() {
   const firstName = profile?.name?.split(' ')[0] ?? 'Учню'
 
   // Спроби учня
-  const { data: attempts } = await supabase
+  const { data: allAttempts } = await supabase
     .from('attempts')
-    .select('nmt_score, score_total, finished_at, variant_id, started_at')
+    .select('nmt_score, score_total, finished_at, variant_id, started_at, variants(kind)')
     .eq('student_id', user.id)
     .eq('status', 'done')
     .order('finished_at', { ascending: false })
+
+  // Повні варіанти НМТ окремо від тематичних тестів
+  const attempts = (allAttempts ?? []).filter(a => (a.variants as any)?.kind !== 'topic')
+  const topicAttemptsCount = (allAttempts ?? []).length - attempts.length
+
+  const { count: topicTestsCount } = await supabase
+    .from('variants')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_published', true)
+    .eq('kind', 'topic')
 
   // Кількість доступних варіантів
   const { count: totalVariants } = await supabase
     .from('variants')
     .select('*', { count: 'exact', head: true })
     .eq('is_published', true)
+    .eq('subject', 'math')
+    .eq('kind', 'full')
 
   const nmtScores = (attempts ?? []).filter(a => a.nmt_score).map(a => a.nmt_score!)
   const best = nmtScores.length ? Math.max(...nmtScores) : null
@@ -66,7 +81,7 @@ export default async function HomePage() {
         <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="inline-flex items-center gap-2 bg-white border border-[#c8e6c9] rounded-full px-3 py-1 text-xs font-semibold text-[#2e7d32] mb-3">
             <span className="w-2 h-2 bg-[#0ead69] rounded-full"></span>
-            НМТ 2026 · Математика
+            {seasonLabel(null)} · Математика
           </div>
           <h1 className="text-3xl font-bold text-[#1a2e1a] tracking-tight mb-1">
             Вітаємо, {firstName}! 👋
@@ -149,7 +164,7 @@ export default async function HomePage() {
         )}
 
         {/* Головне меню */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
           <Link href="/tests" className="group">
             <div className="card hover:border-[#0ead69] hover:shadow-md transition-all duration-200 cursor-pointer">
@@ -169,6 +184,33 @@ export default async function HomePage() {
               </div>
               <p className="text-sm text-[#7a9a7a] leading-relaxed">
                 Проходити варіанти НМТ та переглядати результати
+              </p>
+              <div className="flex items-center gap-1 text-[#0ead69] text-sm font-semibold mt-4 group-hover:gap-2 transition-all">
+                Перейти <span>→</span>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/topics" className="group">
+            <div className="card hover:border-[#0ead69] hover:shadow-md transition-all duration-200 cursor-pointer">
+              <div className="w-12 h-12 bg-[#fff8e1] rounded-xl flex items-center justify-center mb-4">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f57f17" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="9"/>
+                  <circle cx="12" cy="12" r="5"/>
+                  <circle cx="12" cy="12" r="1.5"/>
+                </svg>
+              </div>
+              <div className="flex items-start justify-between mb-1">
+                <h2 className="text-lg font-bold text-[#1a2e1a]">Тести за темами</h2>
+                {(topicTestsCount ?? 0) > 0 && (
+                  <span className="text-xs bg-[#fff8e1] text-[#f57f17] font-bold px-2 py-0.5 rounded-full">
+                    {topicTestsCount} тестів
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-[#7a9a7a] leading-relaxed">
+                Короткі тести з однієї теми — щоб підтягнути слабкі місця
+                {topicAttemptsCount > 0 ? ` · пройдено ${topicAttemptsCount}` : ''}
               </p>
               <div className="flex items-center gap-1 text-[#0ead69] text-sm font-semibold mt-4 group-hover:gap-2 transition-all">
                 Перейти <span>→</span>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { CURRENT_SEASON } from '@/lib/season'
 
 export default function AddStudentButton() {
   const [show, setShow] = useState(false)
@@ -44,6 +45,7 @@ export default function AddStudentButton() {
         role: 'student',
         is_verified: true,
         is_active: true,
+        season: CURRENT_SEASON,
       })
     }
 

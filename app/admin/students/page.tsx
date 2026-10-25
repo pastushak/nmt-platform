@@ -4,8 +4,18 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import StudentActions from '@/components/admin/StudentActions'
 import AddStudentButton from '@/components/admin/AddStudentButton'
 import AdminHeader from '@/components/admin/AdminHeader'
+import { CURRENT_SEASON, CURRENT_SEASON_FILTER, seasonLabel, safeIds } from '@/lib/season'
 
-export default async function StudentsPage() {
+export default async function StudentsPage({
+  searchParams,
+}: {
+  searchParams: { season?: string }
+}) {
+  const season = searchParams.season && searchParams.season !== CURRENT_SEASON
+    ? searchParams.season
+    : null // null = поточний сезон
+  const isArchive = season !== null
+
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -14,16 +24,28 @@ export default async function StudentsPage() {
     .rpc('get_my_profile')
   if (profile?.role !== 'teacher') redirect('/home')
 
-  const { data: students } = await supabase
+  let studentsQuery = supabase
     .from('users')
     .select('*')
     .eq('role', 'student')
-    .order('name')
+  studentsQuery = isArchive
+    ? studentsQuery.eq('season', season)
+    : studentsQuery.or(CURRENT_SEASON_FILTER)
+  const { data: students } = await studentsQuery.order('name')
 
-  const { data: attempts } = await supabase
+  // Усі сезони, що є в базі — для перемикача
+  const { data: seasonRows } = await supabase
+    .from('users').select('season').eq('role', 'student').not('season', 'is', null)
+  const seasons = Array.from(new Set([CURRENT_SEASON, ...(seasonRows ?? []).map(r => r.season as string)]))
+    .sort((a, b) => b.localeCompare(a))
+
+  // Тільки повні варіанти НМТ — тематичні тести не мають балу 100–200
+  const { data: attemptRows } = await supabase
     .from('attempts')
-    .select('student_id, nmt_score, finished_at')
+    .select('student_id, nmt_score, finished_at, variants(kind)')
     .eq('status', 'done')
+    .in('student_id', safeIds((students ?? []).map(s => s.id)))
+  const attempts = (attemptRows ?? []).filter(a => (a.variants as any)?.kind !== 'topic')
 
   const statsMap: Record<string, { count: number; best: number | null; last: number | null }> = {}
   for (const a of attempts ?? []) {
@@ -41,12 +63,40 @@ export default async function StudentsPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f7f5]">
-      <AdminHeader currentPage="dashboard" userName={profile?.name} />
+      <AdminHeader currentPage="students" userName={profile?.name} />
 
       <main className="max-w-6xl mx-auto px-6 py-8">
+        {/* Перемикач сезонів */}
+        {seasons.length > 1 && (
+          <div className="flex gap-2 flex-wrap mb-4">
+            {seasons.map(s => {
+              const active = (season ?? CURRENT_SEASON) === s
+              return (
+                <Link
+                  key={s}
+                  href={s === CURRENT_SEASON ? '/admin/students' : `/admin/students?season=${s}`}
+                  className={`text-sm px-3 py-1.5 rounded-xl border font-semibold transition-colors ${
+                    active
+                      ? 'bg-[#0ead69] border-[#0ead69] text-white'
+                      : 'bg-white border-[#e8ede8] text-[#445544] hover:border-[#0ead69]'
+                  }`}
+                >
+                  {seasonLabel(s)}{s === CURRENT_SEASON ? ' · поточний' : ' · архів'}
+                </Link>
+              )
+            })}
+          </div>
+        )}
+
+        {isArchive && (
+          <div className="bg-[#e3f2fd] border border-[#bbdefb] text-[#1565c0] px-4 py-3 rounded-xl text-sm mb-4">
+            🗄 Архів {seasonLabel(season)}: результати збережено для перегляду, вхід цим учням закрито.
+          </div>
+        )}
+
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="page-title mb-1">Учні</h1>
+            <h1 className="page-title mb-1">{isArchive ? `Учні ${seasonLabel(season)}` : 'Учні'}</h1>
             <p className="text-sm text-[#7a9a7a]">
               {students?.length ?? 0} учнів ·{' '}
               {students?.filter(s => s.is_verified).length ?? 0} підтверджених
@@ -57,7 +107,7 @@ export default async function StudentsPage() {
         {!students?.length ? (
           <div className="card text-center py-16">
             <p className="text-4xl mb-4">👤</p>
-            <p className="text-[#445544] font-medium">Ще немає учнів</p>
+            <p className="text-[#445544] font-medium">{isArchive ? 'У цьому сезоні немає учнів' : 'Ще немає учнів у поточному сезоні'}</p>
             <p className="text-sm text-[#7a9a7a] mt-2">Додайте першого учня вручну</p>
           </div>
         ) : (

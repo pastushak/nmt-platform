@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import LogoutButton from '@/components/ui/LogoutButton'
+import { seasonLabel } from '@/lib/season'
 
 interface Props {
-  currentPage: 'home' | 'tests' | 'stats' | 'materials' | 'set'
+  currentPage: 'home' | 'tests' | 'topics' | 'stats' | 'materials' | 'set'
   userName?: string
 }
 
@@ -14,6 +15,7 @@ export default function StudentHeader({ currentPage, userName }: Props) {
 
   const links = [
     { href: '/tests', label: 'Тести', key: 'tests' },
+    { href: '/topics', label: 'За темами', key: 'topics' },
     { href: '/set', label: 'Сет НМТ', key: 'set' },
     { href: '/stats', label: 'Статистика', key: 'stats' },
     { href: '/materials', label: 'Матеріали', key: 'materials' },
@@ -32,7 +34,7 @@ export default function StudentHeader({ currentPage, userName }: Props) {
           </div>
           <div>
             <div className="font-bold text-[#1a2e1a] text-sm leading-tight">НМТ Математика</div>
-            <div className="text-[#7a9a7a] text-xs">Підготовка 2026</div>
+            <div className="text-[#7a9a7a] text-xs">Підготовка {seasonLabel(null)}</div>
           </div>
         </Link>
 

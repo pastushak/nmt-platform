@@ -1,5 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { requireStudentAccess } from '@/lib/access'
 import ResultsClient from '@/components/ResultsClient'
 
 export default async function ResultsPage({
@@ -10,10 +11,11 @@ export default async function ResultsPage({
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+  await requireStudentAccess(supabase, user.id)
 
   const { data: attempt } = await supabase
     .from('attempts')
-    .select('*, variants(title)')
+    .select('*, variants(title, kind, layout)')
     .eq('id', params.attemptId)
     .eq('student_id', user.id)
     .single()

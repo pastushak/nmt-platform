@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { requireStudentAccess } from '@/lib/access'
 import StudentHeader from '@/components/StudentHeader'
 import Footer from '@/components/ui/Footer'
 
@@ -8,6 +9,7 @@ export default async function TestsPage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+  await requireStudentAccess(supabase, user.id)
 
   const { data: profile } = await supabase.rpc('get_my_profile')
 
@@ -17,6 +19,7 @@ export default async function TestsPage() {
     .from('variants')
     .select('*')
     .eq('subject', 'math')   // ← тільки математика
+    .eq('kind', 'full')      // ← тематичні тести — на /topics
     .order('created_at', { ascending: true })
 
   const { data: attempts } = await supabase

@@ -1,5 +1,6 @@
 import { redirect, notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { requireStudentAccess } from '@/lib/access'
 import SetClient from '@/components/SetClient'
 
 export default async function SetAttemptPage({
@@ -10,6 +11,7 @@ export default async function SetAttemptPage({
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+  await requireStudentAccess(supabase, user.id)
 
   const { data: attempt } = await supabase
     .from('set_attempts')

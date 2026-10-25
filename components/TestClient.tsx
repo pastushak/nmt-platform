@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Question, Variant } from '@/lib/types'
 import { calculateAttemptScore } from '@/lib/scoring'
+import { getLayout, isTopicVariant } from '@/lib/variant-layout'
 import Timer from '@/components/ui/Timer'
 import SingleQuestionComponent from '@/components/questions/SingleQuestion'
 import MatchingQuestionComponent from '@/components/questions/MatchingQuestion'
@@ -132,7 +133,8 @@ export default function TestClient({ variant, questions, userId }: Props) {
       score_matching: result.score_matching,
       score_open: result.score_open,
       score_total: result.score_total,
-      nmt_score: result.nmt_score,
+      // Тематичний тест не переводиться у шкалу 100–200
+      nmt_score: isTopicVariant(variant) ? null : result.nmt_score,
     }).eq('id', attemptId)
 
     router.push(`/results/${attemptId}`)
@@ -158,6 +160,8 @@ export default function TestClient({ variant, questions, userId }: Props) {
         <TestInstructionModal
           variantTitle={variant.title}
           timeLimit={variant.time_limit}
+          isTopic={isTopicVariant(variant)}
+          layout={getLayout(variant)}
           onStart={() => {
             setShowInstruction(false)
             createAttempt()

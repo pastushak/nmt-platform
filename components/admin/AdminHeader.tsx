@@ -5,7 +5,7 @@ import Link from 'next/link'
 import LogoutButton from '@/components/ui/LogoutButton'
 
 interface Props {
-  currentPage: 'dashboard' | 'variants' | 'students' | 'materials'
+  currentPage: 'dashboard' | 'variants' | 'students' | 'archive' | 'materials'
   userName?: string
 }
 
@@ -16,6 +16,7 @@ export default function AdminHeader({ currentPage, userName }: Props) {
     { href: '/admin', label: 'Дашборд', key: 'dashboard' },
     { href: '/admin/variants', label: 'Варіанти', key: 'variants' },
     { href: '/admin/students', label: 'Учні', key: 'students' },
+    { href: '/admin/archive', label: 'Архів', key: 'archive' },
     { href: '/materials', label: 'Матеріали', key: 'materials' },
   ]
 

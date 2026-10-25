@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import PublishToggle from '@/components/admin/PublishToggle'
 import DeleteVariantButton from '@/components/admin/DeleteVariantButton'
 import AdminHeader from '@/components/admin/AdminHeader'
+import { getLayout, isTopicVariant, totalQuestions } from '@/lib/variant-layout'
 
 export default async function VariantsPage() {
   const supabase = createServerSupabaseClient()
@@ -35,9 +36,13 @@ export default async function VariantsPage() {
     aMap[a.variant_id] = (aMap[a.variant_id] ?? 0) + 1
   }
 
-  function getRequiredCount(subject?: string) {
-    return subject === 'ukrainian' ? 30 : 22
+  function getRequiredCount(v: any) {
+    if (isTopicVariant(v)) return totalQuestions(getLayout(v))
+    return v.subject === 'ukrainian' ? 30 : 22
   }
+
+  const fullCount = (variants ?? []).filter(v => !isTopicVariant(v)).length
+  const topicCount = (variants ?? []).length - fullCount
 
   return (
     <div className="min-h-screen bg-[#f5f7f5]">
@@ -47,9 +52,9 @@ export default async function VariantsPage() {
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="page-title mb-1">Варіанти</h1>
-            <p className="text-sm text-[#7a9a7a]">{variants?.length ?? 0} варіантів</p>
+            <p className="text-sm text-[#7a9a7a]">{fullCount} варіантів НМТ · {topicCount} тематичних тестів</p>
           </div>
-          <Link href="/admin/variants/new" className="btn-primary">+ Новий варіант</Link>
+          <Link href="/admin/variants/new" className="btn-primary">+ Новий варіант / тест</Link>
         </div>
 
         {!variants?.length ? (
@@ -65,7 +70,7 @@ export default async function VariantsPage() {
             {variants.map(variant => {
               const qCount = qMap[variant.id] ?? 0
               const aCount = aMap[variant.id] ?? 0
-              const required = getRequiredCount(variant.subject)
+              const required = getRequiredCount(variant)
               const isComplete = qCount === required
               const subjectLabel = variant.subject === 'ukrainian' ? '🇺🇦 Укр. мова' : '📐 Математика'
 
@@ -78,6 +83,11 @@ export default async function VariantsPage() {
                         <span className="text-xs bg-[#f0f7f0] text-[#556655] px-2 py-0.5 rounded-full font-medium">
                           {subjectLabel}
                         </span>
+                        {isTopicVariant(variant) && (
+                          <span className="text-xs bg-[#fff8e1] text-[#f57f17] px-2 py-0.5 rounded-full font-semibold">
+                            🎯 {variant.topic || 'Тематичний'}
+                          </span>
+                        )}
                         {variant.is_published ? (
                           <span className="badge-done">Опубліковано</span>
                         ) : (

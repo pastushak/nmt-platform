@@ -44,6 +44,7 @@ export default function SetLauncher({
       .from('variants')
       .select('id')
       .eq('subject', 'math')
+      .eq('kind', 'full') // тематичні тести не беруть участі в сеті
       .eq('is_published', true)
 
     const { data: ukrainianVariants } = await supabase
