@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Question, Variant } from '@/lib/types'
-import { calculateSetScore, SetAnswerState } from '@/lib/scoring-set'
+import type { SetAnswerState } from '@/lib/scoring-set'
 import Timer from '@/components/ui/Timer'
 import SingleQuestionComponent from '@/components/questions/SingleQuestion'
 import MatchingQuestionComponent from '@/components/questions/MatchingQuestion'
@@ -127,36 +127,38 @@ export default function SetClient({
     }
   }
 
+  const submitRef = useRef(false)
+
   async function handleSubmit() {
-    if (submitting) return
+    if (submitRef.current) return
+    submitRef.current = true
     setSubmitting(true)
     setShowConfirm(false)
+    clearTimeout(saveTimer.current)
 
-    const result = calculateSetScore(
-      mathQuestions, mathAnswers,
-      ukrainianQuestions, ukrainianAnswers
-    )
-
-    await supabase
-      .from('set_attempts')
-      .update({
-        status: 'done',
-        finished_at: new Date().toISOString(),
-        math_answers: mathAnswers,
-        ukrainian_answers: ukrainianAnswers,
-        math_score_single: result.math_score_single,
-        math_score_matching: result.math_score_matching,
-        math_score_open: result.math_score_open,
-        math_score_total: result.math_score_total,
-        math_nmt_score: result.math_nmt_score,
-        ukrainian_score_single: result.ukrainian_score_single,
-        ukrainian_score_matching: result.ukrainian_score_matching,
-        ukrainian_score_total: result.ukrainian_score_total,
-        ukrainian_nmt_score: result.ukrainian_nmt_score,
-      })
-      .eq('id', attemptId)
+    // Бал рахує база (submit_set) — надсилаємо лише відповіді
+    const args = { p_set_id: attemptId, p_math: mathAnswers, p_ukr: ukrainianAnswers }
+    let { error } = await supabase.rpc('submit_set', args)
+    if (error) {
+      await new Promise(r => setTimeout(r, 1500))
+      ;({ error } = await supabase.rpc('submit_set', args))
+    }
+    if (error) {
+      toast.error('Не вдалося зберегти результат. Перевірте інтернет і натисніть ще раз.')
+      submitRef.current = false
+      setSubmitting(false)
+      return
+    }
 
     window.location.href = `/set-results/${attemptId}`
+  }
+
+  function handleExpire() {
+    toast('⏰ Час вийшов — сет здається автоматично', {
+      duration: 4000,
+      style: { background: '#ffebee', color: '#c62828', border: '1px solid #ffcdd2', fontWeight: '700' },
+    })
+    handleSubmit()
   }
 
   function countAnswered(qs: Question[], ans: Record<string, SetAnswerState>) {
@@ -202,6 +204,7 @@ export default function SetClient({
                 startedAt={startedAt}
                 timeLimitMin={120}
                 onWarning={handleWarning}
+                onExpire={handleExpire}
               />
             </div>
 

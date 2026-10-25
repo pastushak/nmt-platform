@@ -2,6 +2,7 @@ import { redirect, notFound } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireStudentAccess } from '@/lib/access'
 import SetClient from '@/components/SetClient'
+import type { Question } from '@/lib/types'
 
 export default async function SetAttemptPage({
   params,
@@ -23,6 +24,12 @@ export default async function SetAttemptPage({
   if (!attempt) notFound()
   if (attempt.status === 'done') redirect(`/set-results/${attempt.id}`)
 
+  // Час сету (120 хв) вийшов, поки учня не було — здаємо збережені відповіді
+  if (Date.now() >= new Date(attempt.started_at).getTime() + 120 * 60_000) {
+    await supabase.rpc('submit_set', { p_set_id: attempt.id })
+    redirect(`/set-results/${attempt.id}`)
+  }
+
   // Завантажуємо варіанти і питання
   const { data: mathVariant } = await supabase
     .from('variants')
@@ -38,19 +45,15 @@ export default async function SetAttemptPage({
 
   if (!mathVariant || !ukrainianVariant) notFound()
 
-  const { data: mathQuestions } = await supabase
-    .from('questions')
-    .select('*')
-    .eq('variant_id', attempt.math_variant_id)
-    .order('number', { ascending: true })
+  // Питання БЕЗ правильних відповідей (функція в БД)
+  const [{ data: mRows }, { data: uRows }] = await Promise.all([
+    supabase.rpc('get_test_questions', { p_variant_id: attempt.math_variant_id }),
+    supabase.rpc('get_test_questions', { p_variant_id: attempt.ukrainian_variant_id }),
+  ])
+  const mathQuestions = (mRows ?? []) as unknown as Question[]
+  const ukrainianQuestions = (uRows ?? []) as unknown as Question[]
 
-  const { data: ukrainianQuestions } = await supabase
-    .from('questions')
-    .select('*')
-    .eq('variant_id', attempt.ukrainian_variant_id)
-    .order('number', { ascending: true })
-
-  if (!mathQuestions?.length || !ukrainianQuestions?.length) notFound()
+  if (!mathQuestions.length || !ukrainianQuestions.length) notFound()
 
   return (
     <SetClient

@@ -43,7 +43,9 @@ export default async function SetPage() {
     .select('id, started_at')
     .eq('student_id', user.id)
     .eq('status', 'in_progress')
-    .single()
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   const canStart = (mathVariants?.length ?? 0) > 0 && (ukrainianVariants?.length ?? 0) > 0
 

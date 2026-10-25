@@ -1,22 +1,30 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface TimerProps {
   startedAt: number
   timeLimitMin: number
   onWarning?: (minutesLeft: number) => void
+  /** Викликається один раз, коли час вийшов */
+  onExpire?: () => void
 }
 
-export default function Timer({ startedAt, timeLimitMin, onWarning }: TimerProps) {
+export default function Timer({ startedAt, timeLimitMin, onWarning, onExpire }: TimerProps) {
   const [remaining, setRemaining] = useState(timeLimitMin * 60)
   const [warned, setWarned] = useState<Set<number>>(new Set())
+  const expiredRef = useRef(false)
 
   useEffect(() => {
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startedAt) / 1000)
       const left = Math.max(0, timeLimitMin * 60 - elapsed)
       setRemaining(left)
+
+      if (left === 0 && !expiredRef.current) {
+        expiredRef.current = true
+        onExpire?.()
+      }
 
       const minutesLeft = Math.floor(left / 60)
       const secondsLeft = left % 60
@@ -29,7 +37,7 @@ export default function Timer({ startedAt, timeLimitMin, onWarning }: TimerProps
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [startedAt, timeLimitMin, onWarning, warned])
+  }, [startedAt, timeLimitMin, onWarning, onExpire, warned])
 
   const minutes = Math.floor(remaining / 60)
   const seconds = remaining % 60

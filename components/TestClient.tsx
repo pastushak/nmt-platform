@@ -4,7 +4,6 @@ import { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Question, Variant } from '@/lib/types'
-import { calculateAttemptScore } from '@/lib/scoring'
 import { getLayout, isTopicVariant } from '@/lib/variant-layout'
 import Timer from '@/components/ui/Timer'
 import SingleQuestionComponent from '@/components/questions/SingleQuestion'
@@ -17,6 +16,8 @@ interface Props {
   variant: Variant
   questions: Question[]
   userId: string
+  /** Незавершена спроба, яку треба продовжити */
+  resume?: { id: string; startedAt: number; answers: Record<string, AnswerState> } | null
 }
 
 type AnswerState = {
@@ -26,15 +27,15 @@ type AnswerState = {
   answer_open?: string
 }
 
-export default function TestClient({ variant, questions, userId }: Props) {
+export default function TestClient({ variant, questions, userId, resume = null }: Props) {
   const router = useRouter()
-  const [attemptId, setAttemptId] = useState<string | null>(null)
-  const [startedAt, setStartedAt] = useState<number>(Date.now())
-  const [answers, setAnswers] = useState<Record<string, AnswerState>>({})
+  const [attemptId, setAttemptId] = useState<string | null>(resume?.id ?? null)
+  const [startedAt, setStartedAt] = useState<number>(resume?.startedAt ?? Date.now())
+  const [answers, setAnswers] = useState<Record<string, AnswerState>>(resume?.answers ?? {})
   const [current, setCurrent] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-  const [showInstruction, setShowInstruction] = useState(true)
+  const [showInstruction, setShowInstruction] = useState(!resume)
   const supabase = createClient()
   const saveTimer = useRef<NodeJS.Timeout>()
 
@@ -44,14 +45,15 @@ export default function TestClient({ variant, questions, userId }: Props) {
       .insert({
         student_id: userId,
         variant_id: variant.id,
-        started_at: new Date().toISOString(),
-        status: 'in_progress',
       })
-      .select('id')
+      .select('id, started_at')
       .single()
     if (data) {
       setAttemptId(data.id)
-      setStartedAt(Date.now())
+      // Час старту ставить база — таймер рахуємо від нього
+      setStartedAt(new Date(data.started_at).getTime())
+    } else {
+      toast.error('Не вдалося розпочати спробу. Оновіть сторінку.')
     }
   }
 
@@ -106,38 +108,47 @@ export default function TestClient({ variant, questions, userId }: Props) {
     }
   }
 
+  const submitRef = useRef(false)
+
   async function handleSubmit() {
-    if (!attemptId || submitting) return
+    if (!attemptId || submitRef.current) return
+    submitRef.current = true
     setSubmitting(true)
     setShowConfirm(false)
+    clearTimeout(saveTimer.current)
 
-    const result = calculateAttemptScore(questions, answers)
-
-    for (const q of questions) {
-      const a = answers[q.id]
-      await supabase.from('answers').upsert({
-        attempt_id: attemptId,
-        question_id: q.id,
-        question_type: q.type,
-        answer_single: a?.answer_single ?? null,
-        answer_matching: a?.answer_matching ?? null,
-        answer_open: a?.answer_open ?? null,
-        score: result.answerScores[q.id] ?? 0,
-      }, { onConflict: 'attempt_id,question_id' })
+    // Бал рахує база: надсилаємо лише відповіді
+    const payload: Record<string, Omit<AnswerState, 'type'>> = {}
+    for (const [qid, a] of Object.entries(answers)) {
+      payload[qid] = {
+        answer_single: a.answer_single,
+        answer_matching: a.answer_matching,
+        answer_open: a.answer_open,
+      }
     }
 
-    await supabase.from('attempts').update({
-      status: 'done',
-      finished_at: new Date().toISOString(),
-      score_single: result.score_single,
-      score_matching: result.score_matching,
-      score_open: result.score_open,
-      score_total: result.score_total,
-      // Тематичний тест не переводиться у шкалу 100–200
-      nmt_score: isTopicVariant(variant) ? null : result.nmt_score,
-    }).eq('id', attemptId)
+    let { error } = await supabase.rpc('submit_attempt', { p_attempt_id: attemptId, p_answers: payload })
+    if (error) {
+      // Одна повторна спроба — на випадок короткого обриву зв'язку
+      await new Promise(r => setTimeout(r, 1500))
+      ;({ error } = await supabase.rpc('submit_attempt', { p_attempt_id: attemptId, p_answers: payload }))
+    }
+    if (error) {
+      toast.error('Не вдалося зберегти результат. Перевірте інтернет і натисніть ще раз.')
+      submitRef.current = false
+      setSubmitting(false)
+      return
+    }
 
     router.push(`/results/${attemptId}`)
+  }
+
+  function handleExpire() {
+    toast('⏰ Час вийшов — тест здається автоматично', {
+      duration: 4000,
+      style: { background: '#ffebee', color: '#c62828', border: '1px solid #ffcdd2', fontWeight: '700' },
+    })
+    handleSubmit()
   }
 
   const answeredCount = questions.filter(q => {
@@ -185,6 +196,7 @@ export default function TestClient({ variant, questions, userId }: Props) {
                 startedAt={startedAt}
                 timeLimitMin={variant.time_limit}
                 onWarning={handleWarning}
+                onExpire={attemptId ? handleExpire : undefined}
               />
             </div>
             <a
