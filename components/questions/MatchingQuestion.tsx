@@ -113,7 +113,7 @@ export default function MatchingQuestionComponent({ question, answer, onChange, 
               key={item.id}
               onClick={() => handleLeft(item.id)}
               disabled={showResult}
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left transition-all text-sm font-medium ${leftStyle(item.id)}`}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left transition-all text-sm font-medium min-w-0 ${leftStyle(item.id)}`}
             >
               <span className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                 selected?.side === 'left' && selected.id === item.id
@@ -124,7 +124,7 @@ export default function MatchingQuestionComponent({ question, answer, onChange, 
               }`}>
                 {item.id}
               </span>
-              <MathText text={item.text} className="leading-tight" />
+              <MathText text={item.text} className="leading-tight min-w-0" />
             </button>
           ))}
         </div>
@@ -136,7 +136,7 @@ export default function MatchingQuestionComponent({ question, answer, onChange, 
               key={item.id}
               onClick={() => handleRight(item.id)}
               disabled={showResult}
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left transition-all text-sm font-medium ${rightStyle(item.id)}`}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-left transition-all text-sm font-medium min-w-0 ${rightStyle(item.id)}`}
             >
               <span className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                 selected?.side === 'right' && selected.id === item.id
@@ -145,7 +145,7 @@ export default function MatchingQuestionComponent({ question, answer, onChange, 
               }`}>
                 {item.id}
               </span>
-              <MathText text={item.text} className="leading-tight" />
+              <MathText text={item.text} className="leading-tight min-w-0" />
             </button>
           ))}
         </div>

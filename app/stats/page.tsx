@@ -20,23 +20,16 @@ export default async function StatsPage() {
       .eq('student_id', user.id)
       .eq('status', 'done')
       .order('finished_at', { ascending: true }),
-    supabase.from('attempts')
-      .select('variant_id, nmt_score')
-      .eq('status', 'done')
-      .not('nmt_score', 'is', null),
+    // Середні бали класу рахує функція в БД: чужі спроби учню не видно (RLS)
+    supabase.rpc('class_variant_averages'),
   ])
 
   if (profile?.role === 'teacher') redirect('/admin')
 
   // Середній бал класу по варіантах
   const classAvg: Record<string, number> = {}
-  const grouped: Record<string, number[]> = {}
-  for (const a of classAttempts ?? []) {
-    if (!grouped[a.variant_id]) grouped[a.variant_id] = []
-    if (a.nmt_score) grouped[a.variant_id].push(a.nmt_score)
-  }
-  for (const [vid, scores] of Object.entries(grouped)) {
-    classAvg[vid] = Math.round(scores.reduce((s, x) => s + x, 0) / scores.length)
+  for (const row of (classAttempts ?? []) as { variant_id: string; avg_score: number }[]) {
+    classAvg[row.variant_id] = row.avg_score
   }
 
   // Графік і історія — тільки повні варіанти; помилки за темами — з усіх спроб (і тематичних теж)

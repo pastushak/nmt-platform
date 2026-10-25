@@ -11,7 +11,8 @@ export default async function TestPage({
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  await requireStudentAccess(supabase, user.id)
+  const profile = await requireStudentAccess(supabase, user.id)
+  if (profile?.role === 'student' && !profile.is_verified) redirect('/tests')
 
   const { data: variant } = await supabase
     .from('variants')

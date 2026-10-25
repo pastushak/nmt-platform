@@ -10,7 +10,7 @@ import { isCurrentSeason } from './season'
 export async function requireStudentAccess(supabase: SupabaseClient, userId: string) {
   const { data: profile } = await supabase
     .from('users')
-    .select('role, is_active, season')
+    .select('role, is_active, is_verified, season')
     .eq('id', userId)
     .single()
 

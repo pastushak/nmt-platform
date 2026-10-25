@@ -45,7 +45,7 @@ export default function SingleQuestionComponent({ question, answer, onChange, sh
                 isSelected ? 'bg-[#0ead69] text-white' :
                 'bg-[#f5f7f5] text-[#556655]'
               }`}>{opt}</span>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <MathText text={question.options[opt]} className="text-sm text-[#2a3a2a]" />
               </div>
               {showResult && isCorrect && <span className="text-[#0ead69] font-bold">✓</span>}

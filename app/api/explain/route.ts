@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { MAX_EXPLAINS, EXPLAIN_MODEL } from '@/lib/explain'
+import { isCurrentSeason } from '@/lib/season'
+import { POINTS } from '@/lib/variant-layout'
 
 // Пояснення помилки. Усі дані (умова, правильна відповідь, відповідь учня)
 // беремо з бази, а не з запиту — так API не можна використати для довільних промптів.
@@ -8,6 +10,12 @@ export async function POST(req: NextRequest) {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Потрібно увійти' }, { status: 401 })
+
+  // Заблоковані та архівні учні не користуються поясненнями
+  const { data: me } = await supabase.from('users').select('role, is_active, season').eq('id', user.id).single()
+  if (!me || (me.role === 'student' && (me.is_active === false || !isCurrentSeason(me.season)))) {
+    return NextResponse.json({ error: 'Доступ закрито' }, { status: 403 })
+  }
 
   let body: { attemptId?: string; questionId?: string }
   try { body = await req.json() } catch { body = {} }
@@ -41,8 +49,14 @@ export async function POST(req: NextRequest) {
   }
 
   const { data: ans } = await supabase
-    .from('answers').select('answer_single, answer_matching, answer_open')
+    .from('answers').select('answer_single, answer_matching, answer_open, score')
     .eq('attempt_id', attemptId).eq('question_id', questionId).maybeSingle()
+
+  // Пояснюємо лише помилки
+  const maxPts = POINTS[q.type as keyof typeof POINTS] ?? 1
+  if (ans && (ans.score ?? 0) >= maxPts) {
+    return NextResponse.json({ error: 'Відповідь правильна — пояснення не потрібне', used }, { status: 400 })
+  }
 
   const fmtPairs = (m: Record<string, string> | null) =>
     m && Object.keys(m).length ? Object.entries(m).map(([k, v]) => `${k}–${v}`).join(', ') : 'не відповів'
