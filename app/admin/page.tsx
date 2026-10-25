@@ -14,36 +14,38 @@ export default async function AdminPage() {
     .from('users').select('name, role').eq('id', user.id).single()
   if (profile?.role !== 'teacher') redirect('/home')
 
-  // --- Базова статистика ---
-  const { count: variantsCount } = await supabase
-    .from('variants').select('*', { count: 'exact', head: true })
-
+  // --- Базова статистика (незалежні запити — паралельно) ---
   // Учні поточного сезону — уся статистика дашборду рахується тільки по них
-  const { data: seasonStudents } = await supabase
-    .from('users').select('id').eq('role', 'student').or(CURRENT_SEASON_FILTER)
+  const [{ count: variantsCount }, { data: seasonStudents }] = await Promise.all([
+    supabase.from('variants').select('*', { count: 'exact', head: true }),
+    supabase.from('users').select('id').eq('role', 'student').or(CURRENT_SEASON_FILTER),
+  ])
   const studentIdList = (seasonStudents ?? []).map(s => s.id)
   const sIds = safeIds(studentIdList)
   const studentsCount = studentIdList.length
 
-  const { count: attemptsCount } = await supabase
-    .from('attempts').select('*', { count: 'exact', head: true })
-    .eq('status', 'done').in('student_id', sIds)
-
-  // --- Останні результати + середній бал по варіантах ---
-  const { data: recentAttempts } = await supabase
-    .from('attempts')
-    .select('*, users(name), variants(title, kind)')
-    .eq('status', 'done')
-    .in('student_id', sIds)
-    .order('finished_at', { ascending: false })
-    .limit(8)
-
-  const { data: allAttempts } = await supabase
-    .from('attempts')
-    .select('variant_id, nmt_score, variants(title), finished_at, started_at, student_id')
-    .eq('status', 'done')
-    .in('student_id', sIds)
-    .not('nmt_score', 'is', null)
+  // --- Спроби сезону: лічильник, останні результати, бали, id для відповідей — паралельно ---
+  const [
+    { count: attemptsCount },
+    { data: recentAttempts },
+    { data: allAttempts },
+    { data: seasonAttemptRows },
+  ] = await Promise.all([
+    supabase.from('attempts').select('*', { count: 'exact', head: true })
+      .eq('status', 'done').in('student_id', sIds),
+    supabase.from('attempts')
+      .select('*, users(name), variants(title, kind)')
+      .eq('status', 'done')
+      .in('student_id', sIds)
+      .order('finished_at', { ascending: false })
+      .limit(8),
+    supabase.from('attempts')
+      .select('variant_id, nmt_score, variants(title), finished_at, started_at, student_id')
+      .eq('status', 'done')
+      .in('student_id', sIds)
+      .not('nmt_score', 'is', null),
+    supabase.from('attempts').select('id').eq('status', 'done').in('student_id', sIds),
+  ])
 
   // Середній бал по варіантах
   const variantStats: Record<string, { title: string; scores: number[] }> = {}
@@ -126,16 +128,14 @@ export default async function AdminPage() {
 
   // --- Статистика по темах (топ 8 тем з найбільшою кількістю помилок) ---
   // Відповіді лише зі спроб учнів поточного сезону
-  const { data: seasonAttemptRows } = await supabase
-    .from('attempts').select('id').eq('status', 'done').in('student_id', sIds)
   const seasonAttemptIds = (seasonAttemptRows ?? []).map(a => a.id)
 
-  const seasonAnswers: { question_id: string; score: number }[] = []
-  for (const part of chunk(seasonAttemptIds)) {
-    const { data } = await supabase
-      .from('answers').select('question_id, score').in('attempt_id', part)
-    seasonAnswers.push(...(data ?? []))
-  }
+  const answerParts = await Promise.all(
+    chunk(seasonAttemptIds).map(part =>
+      supabase.from('answers').select('question_id, score').in('attempt_id', part))
+  )
+  const seasonAnswers: { question_id: string; score: number }[] =
+    answerParts.flatMap(r => (r.data ?? []) as { question_id: string; score: number }[])
   const wrongAnswers = seasonAnswers.filter(a => a.score === 0)
 
   const mistakeCount: Record<string, number> = {}

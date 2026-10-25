@@ -25,7 +25,7 @@ export default function MathText({ text, className = '' }: MathTextProps) {
           <span
             key={i}
             dangerouslySetInnerHTML={{ __html: html }}
-            className="inline-block mx-0.5"
+            className="inline-block mx-0.5 math-inline"
           />
         )
       } catch {

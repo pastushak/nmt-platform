@@ -111,7 +111,7 @@ export default async function StudentsPage({
             <p className="text-sm text-[#7a9a7a] mt-2">Додайте першого учня вручну</p>
           </div>
         ) : (
-          <div className="card overflow-hidden p-0">
+          <div className="card overflow-x-auto p-0">
             <table className="w-full">
               <thead className="bg-[#f8faf8] border-b border-[#e8ede8]">
                 <tr>

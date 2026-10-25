@@ -12,41 +12,32 @@ export default async function HomePage() {
   if (!user) redirect('/login')
   await requireStudentAccess(supabase, user.id)
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('name, role')
-    .eq('id', user.id)
-    .single()
+  // Профіль, спроби та лічильники — незалежні запити, виконуємо паралельно
+  const [
+    { data: profile },
+    { data: allAttempts },
+    { count: topicTestsCount },
+    { count: totalVariants },
+  ] = await Promise.all([
+    supabase.from('users').select('name, role').eq('id', user.id).single(),
+    supabase.from('attempts')
+      .select('nmt_score, score_total, finished_at, variant_id, started_at, variants(kind)')
+      .eq('student_id', user.id)
+      .eq('status', 'done')
+      .order('finished_at', { ascending: false }),
+    supabase.from('variants').select('*', { count: 'exact', head: true })
+      .eq('is_published', true).eq('kind', 'topic'),
+    supabase.from('variants').select('*', { count: 'exact', head: true })
+      .eq('is_published', true).eq('subject', 'math').eq('kind', 'full'),
+  ])
 
   if (profile?.role === 'teacher') redirect('/admin')
 
   const firstName = profile?.name?.split(' ')[0] ?? 'Учню'
 
-  // Спроби учня
-  const { data: allAttempts } = await supabase
-    .from('attempts')
-    .select('nmt_score, score_total, finished_at, variant_id, started_at, variants(kind)')
-    .eq('student_id', user.id)
-    .eq('status', 'done')
-    .order('finished_at', { ascending: false })
-
   // Повні варіанти НМТ окремо від тематичних тестів
   const attempts = (allAttempts ?? []).filter(a => (a.variants as any)?.kind !== 'topic')
   const topicAttemptsCount = (allAttempts ?? []).length - attempts.length
-
-  const { count: topicTestsCount } = await supabase
-    .from('variants')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_published', true)
-    .eq('kind', 'topic')
-
-  // Кількість доступних варіантів
-  const { count: totalVariants } = await supabase
-    .from('variants')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_published', true)
-    .eq('subject', 'math')
-    .eq('kind', 'full')
 
   const nmtScores = (attempts ?? []).filter(a => a.nmt_score).map(a => a.nmt_score!)
   const best = nmtScores.length ? Math.max(...nmtScores) : null

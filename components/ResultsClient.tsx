@@ -9,73 +9,51 @@ import MatchingQuestionComponent from '@/components/questions/MatchingQuestion'
 import OpenQuestionComponent from '@/components/questions/OpenQuestion'
 import MarkdownMath from '@/components/ui/MarkdownMath'
 
-const MAX_EXPLAINS = 3
+import { MAX_EXPLAINS } from '@/lib/explain'
 
-function ExplainButton({ question, answer, explainCount, onExplain }: {
-  question: any
-  answer: any
+function ExplainButton({ attemptId, questionId, initial, explainCount, onUsed }: {
+  attemptId: string
+  questionId: string
+  initial: string | null
   explainCount: number
-  onExplain: () => void
+  onUsed: (used: number) => void
 }) {
   const [loading, setLoading] = useState(false)
-  const [explanation, setExplanation] = useState<string | null>(null)
+  const [explanation, setExplanation] = useState<string | null>(initial)
+  const [hidden, setHidden] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleExplain() {
     setLoading(true)
-    onExplain()
+    setError(null)
     try {
-      const userAnswer = question.type === 'single'
-        ? (answer?.answer_single ?? 'не відповів')
-        : question.type === 'open'
-        ? (answer?.answer_open ?? 'не відповів')
-        : JSON.stringify(answer?.answer_matching ?? {})
-
-      const correctAnswer = question.type === 'single'
-        ? question.correct_single
-        : question.type === 'open'
-        ? question.correct_open
-        : JSON.stringify(question.correct_matching)
-
       const res = await fetch('/api/explain', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionText: question.text,
-          questionType: question.type,
-          userAnswer,
-          correctAnswer,
-        }),
+        body: JSON.stringify({ attemptId, questionId }),
       })
       const data = await res.json()
-      setExplanation(data.explanation)
+      if (typeof data.used === 'number') onUsed(data.used)
+      if (res.ok && data.explanation) {
+        setExplanation(data.explanation)
+        setHidden(false)
+      } else {
+        setError(data.error ?? 'Помилка. Спробуй ще раз.')
+      }
     } catch {
-      setExplanation('Помилка. Спробуй ще раз.')
+      setError('Помилка зʼєднання. Спробуй ще раз.')
     }
     setLoading(false)
   }
 
-  return (
-    <div className="mt-4">
-      {!explanation ? (
-        explainCount >= MAX_EXPLAINS ? (
-          <div className="text-xs text-[#9a8aaa] italic">
-            ✋ Ліміт пояснень вичерпано ({MAX_EXPLAINS}/{MAX_EXPLAINS})
-          </div>
-        ) : (
-          <button
-            onClick={handleExplain}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-[#f0f0ff] text-[#4E3064] border border-[#d0c0e0] rounded-xl text-sm font-medium hover:bg-[#e8e0f5] transition-colors disabled:opacity-50"
-          >
-            {loading ? '⏳ Аналізую...' : `🤖 Пояснити помилку (залишилось ${MAX_EXPLAINS - explainCount})`}
-          </button>
-        )
-      ) : (
+  if (explanation && !hidden) {
+    return (
+      <div className="mt-4">
         <div className="bg-[#f8f5ff] border border-[#d0c0e0] rounded-xl p-4 mt-2">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-sm font-bold text-[#4E3064]">🤖 AI пояснення</span>
             <button
-              onClick={() => setExplanation(null)}
+              onClick={() => setHidden(true)}
               className="ml-auto text-xs text-[#9a8aaa] hover:text-[#4E3064]"
             >
               ✕
@@ -83,13 +61,42 @@ function ExplainButton({ question, answer, explainCount, onExplain }: {
           </div>
           <MarkdownMath text={explanation} />
         </div>
+      </div>
+    )
+  }
+
+  if (explanation && hidden) {
+    return (
+      <div className="mt-4">
+        <button onClick={() => setHidden(false)} className="text-xs text-[#4E3064] underline">
+          Показати пояснення
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-4">
+      {explainCount >= MAX_EXPLAINS ? (
+        <div className="text-xs text-[#9a8aaa] italic">
+          ✋ Ліміт пояснень вичерпано ({MAX_EXPLAINS}/{MAX_EXPLAINS})
+        </div>
+      ) : (
+        <button
+          onClick={handleExplain}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-[#f0f0ff] text-[#4E3064] border border-[#d0c0e0] rounded-xl text-sm font-medium hover:bg-[#e8e0f5] transition-colors disabled:opacity-50"
+        >
+          {loading ? '⏳ Аналізую...' : `🤖 Пояснити помилку (залишилось ${MAX_EXPLAINS - explainCount})`}
+        </button>
       )}
+      {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
     </div>
   )
 }
 
-export default function ResultsClient({ attempt, questions, answers, durationMin }: any) {
-  const [explainCount, setExplainCount] = useState(0)
+export default function ResultsClient({ attempt, questions, answers, durationMin, initialExplanations = {} }: any) {
+  const [explainCount, setExplainCount] = useState(Object.keys(initialExplanations).length)
 
   const answerMap = Object.fromEntries(answers.map((a: any) => [a.question_id, a]))
   const isTopic = isTopicVariant(attempt.variants)
@@ -245,10 +252,11 @@ export default function ResultsClient({ attempt, questions, answers, durationMin
 
                   {!isCorrect && (
                     <ExplainButton
-                      question={question}
-                      answer={answer}
+                      attemptId={attempt.id}
+                      questionId={question.id}
+                      initial={initialExplanations[question.id] ?? null}
                       explainCount={explainCount}
-                      onExplain={() => setExplainCount(c => c + 1)}
+                      onUsed={setExplainCount}
                     />
                   )}
                 </div>

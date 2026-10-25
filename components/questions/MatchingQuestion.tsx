@@ -105,7 +105,7 @@ export default function MatchingQuestionComponent({ question, answer, onChange, 
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {/* Ліва колонка */}
         <div className="flex flex-col gap-2">
           {question.left_items.map(item => (

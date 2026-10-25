@@ -17,6 +17,15 @@
 
 * { box-sizing: border-box; }
 
+/* iOS Safari збільшує сторінку при фокусі на полі зі шрифтом < 16px — на телефонах ставимо 16px */
+@media (max-width: 639px) {
+  input, textarea, select, .input { font-size: 16px !important; }
+}
+
+/* Широкі формули не розпирають сторінку, а прокручуються всередині себе */
+.math-inline { max-width: 100%; overflow-x: auto; overflow-y: hidden; vertical-align: middle; }
+.katex-display { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+
 body {
   background: var(--bg);
   color: var(--text-primary);

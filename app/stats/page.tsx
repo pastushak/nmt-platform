@@ -12,26 +12,21 @@ export default async function StatsPage() {
   if (!user) redirect('/login')
   await requireStudentAccess(supabase, user.id)
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('name, role')
-    .eq('id', user.id)
-    .single()
+  // Профіль, власні спроби й спроби класу — паралельно
+  const [{ data: profile }, { data: myAttempts }, { data: classAttempts }] = await Promise.all([
+    supabase.from('users').select('name, role').eq('id', user.id).single(),
+    supabase.from('attempts')
+      .select('*, variants(title, kind)')
+      .eq('student_id', user.id)
+      .eq('status', 'done')
+      .order('finished_at', { ascending: true }),
+    supabase.from('attempts')
+      .select('variant_id, nmt_score')
+      .eq('status', 'done')
+      .not('nmt_score', 'is', null),
+  ])
 
   if (profile?.role === 'teacher') redirect('/admin')
-
-  const { data: myAttempts } = await supabase
-    .from('attempts')
-    .select('*, variants(title, kind)')
-    .eq('student_id', user.id)
-    .eq('status', 'done')
-    .order('finished_at', { ascending: true })
-
-  const { data: classAttempts } = await supabase
-    .from('attempts')
-    .select('variant_id, nmt_score')
-    .eq('status', 'done')
-    .not('nmt_score', 'is', null)
 
   // Середній бал класу по варіантах
   const classAvg: Record<string, number> = {}

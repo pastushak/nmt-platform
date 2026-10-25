@@ -24,7 +24,7 @@ export default function MarkdownMath({ text }: { text: string }) {
                 displayMode: isDisplay,
                 throwOnError: false
               })
-              return <span key={j} dangerouslySetInnerHTML={{ __html: html }} className="inline-block mx-0.5" />
+              return <span key={j} dangerouslySetInnerHTML={{ __html: html }} className="inline-block mx-0.5 math-inline" />
             } catch {
               return <span key={j} className="text-red-500 text-xs">[формула]</span>
             }

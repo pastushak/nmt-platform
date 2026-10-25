@@ -33,6 +33,15 @@ export default async function ResultsPage({
     .select('*')
     .eq('attempt_id', params.attemptId)
 
+  // Уже отримані AI-пояснення (не зникають після оновлення сторінки)
+  const { data: explanations } = await supabase
+    .from('explanations')
+    .select('question_id, explanation')
+    .eq('attempt_id', params.attemptId)
+  const initialExplanations = Object.fromEntries(
+    (explanations ?? []).map(e => [e.question_id, e.explanation])
+  )
+
   // Рахуємо час виконання
   const durationMin = attempt.started_at && attempt.finished_at
     ? Math.round((new Date(attempt.finished_at).getTime() - new Date(attempt.started_at).getTime()) / 60000)
@@ -44,6 +53,7 @@ export default async function ResultsPage({
       questions={questions ?? []}
       answers={answers ?? []}
       durationMin={durationMin}
+      initialExplanations={initialExplanations}
     />
   )
 }
