@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireStudentAccess } from '@/lib/access'
 import StudentHeader from '@/components/StudentHeader'
 import Footer from '@/components/ui/Footer'
-import { getLayout, maxScore, totalQuestions } from '@/lib/variant-layout'
+import { getLayout, maxScore, topicOrder, totalQuestions } from '@/lib/variant-layout'
 
 export default async function TopicsPage() {
   const supabase = createServerSupabaseClient()
@@ -41,7 +41,7 @@ export default async function TopicsPage() {
     byVariant[a.variant_id].push(a)
   }
 
-  // Групуємо тести за темою, зберігаючи порядок появи тем
+  // Групуємо тести за темою
   const groups: { topic: string; tests: any[] }[] = []
   for (const t of tests ?? []) {
     const topic = t.topic?.trim() || 'Інше'
@@ -49,6 +49,8 @@ export default async function TopicsPage() {
     if (!g) { g = { topic, tests: [] }; groups.push(g) }
     g.tests.push(t)
   }
+  // Порядок тем — як у посібнику (§ 1–26)
+  groups.sort((a, b) => topicOrder(a.topic) - topicOrder(b.topic) || a.topic.localeCompare(b.topic, 'uk'))
 
   const passedCount = Object.keys(byVariant).length
 
