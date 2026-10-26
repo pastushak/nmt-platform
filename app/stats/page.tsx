@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { requireStudentAccess } from '@/lib/access'
 import StatsCharts from '@/components/stats/StatsCharts'
+import { topicStats as computeTopicStats, pctColor, pctBar, type TopicAttemptRow } from '@/lib/topic-stats'
 import StudentHeader from '@/components/StudentHeader'
 import Footer from '@/components/ui/Footer'
 
@@ -13,16 +14,25 @@ export default async function StatsPage() {
   await requireStudentAccess(supabase, user.id)
 
   // Профіль, власні спроби й спроби класу — паралельно
-  const [{ data: profile }, { data: myAttempts }, { data: classAttempts }] = await Promise.all([
+  const [{ data: profile }, { data: myAttempts }, { data: classAttempts }, { data: topicTests }] = await Promise.all([
     supabase.from('users').select('name, role').eq('id', user.id).single(),
     supabase.from('attempts')
-      .select('*, variants(title, kind)')
+      .select('*, variants(title, kind, topic, layout)')
       .eq('student_id', user.id)
       .eq('status', 'done')
       .order('finished_at', { ascending: true }),
     // Середні бали класу рахує функція в БД: чужі спроби учню не видно (RLS)
     supabase.rpc('class_variant_averages'),
+    // Скільки тематичних тестів доступно в кожній темі
+    supabase.from('variants').select('id, topic').eq('kind', 'topic').eq('is_published', true),
   ])
+
+  const myTopicStats = computeTopicStats((myAttempts ?? []) as unknown as TopicAttemptRow[])
+  const topicTotals: Record<string, number> = {}
+  for (const v of topicTests ?? []) {
+    const t = v.topic?.trim() || 'Інше'
+    topicTotals[t] = (topicTotals[t] ?? 0) + 1
+  }
 
   if (profile?.role === 'teacher') redirect('/admin')
 
@@ -119,7 +129,7 @@ export default async function StatsPage() {
           <p className="text-sm text-[#7a9a7a]">{profile?.name}</p>
         </div>
 
-        {!attempts.length ? (
+        {!(myAttempts ?? []).length ? (
           <div className="card text-center py-16">
             <p className="text-5xl mb-4">📊</p>
             <p className="text-[#445544] font-medium text-lg">Ще немає результатів</p>
@@ -128,6 +138,7 @@ export default async function StatsPage() {
           </div>
         ) : (
           <>
+            {attempts.length > 0 && (<>
             {/* Зведені показники */}
             <div className="grid grid-cols-3 gap-4">
               {[
@@ -144,6 +155,35 @@ export default async function StatsPage() {
 
             {/* Графіки */}
             <StatsCharts chartData={chartData} />
+            </>)}
+
+            {/* Тематичні тести */}
+            {myTopicStats.length > 0 && (
+              <div className="card">
+                <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+                  <h2 className="font-bold text-[#1a2e1a] text-lg">🎯 Тести за темами</h2>
+                  <Link href="/topics" className="text-sm text-[#0ead69] font-semibold">Усі теми →</Link>
+                </div>
+                <div className="space-y-4">
+                  {myTopicStats.map(t => (
+                    <div key={t.topic}>
+                      <div className="flex justify-between gap-3 text-sm mb-1">
+                        <span className="font-medium text-[#1a2e1a] min-w-0">{t.topic}</span>
+                        <span className={`font-bold flex-shrink-0 ${pctColor(t.bestPct)}`}>{t.bestPct}%</span>
+                      </div>
+                      <div className="h-2.5 bg-[#f5f7f5] rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${pctBar(t.bestPct)}`} style={{ width: `${t.bestPct}%` }} />
+                      </div>
+                      <p className="text-xs text-[#7a9a7a] mt-1">
+                        пройдено тестів: {t.tests}{topicTotals[t.topic] ? ` з ${topicTotals[t.topic]}` : ''}
+                        {' · '}спроб: {t.attempts}
+                        {' · '}останній: {t.lastPct}%
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Прогрес по темах */}
             {topicStats.length > 0 && (
@@ -216,6 +256,7 @@ export default async function StatsPage() {
             )}
 
             {/* Таблиця */}
+            {attempts.length > 0 && (
             <div className="card">
               <h3 className="font-bold text-[#1a2e1a] mb-4">Всі результати</h3>
               <div className="overflow-x-auto">
@@ -260,6 +301,7 @@ export default async function StatsPage() {
                 </table>
               </div>
             </div>
+            )}
           </>
         )}
       </main>

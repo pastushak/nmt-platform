@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import AdminHeader from '@/components/admin/AdminHeader'
 import AdminDashboardCharts from '@/components/admin/AdminDashboardCharts'
+import { topicStats, pctColor, pctBar, type TopicAttemptRow } from '@/lib/topic-stats'
 import { CURRENT_SEASON_FILTER, seasonLabel, safeIds, chunk } from '@/lib/season'
 
 export default async function AdminPage() {
@@ -30,6 +31,7 @@ export default async function AdminPage() {
     { data: recentAttempts },
     { data: allAttempts },
     { data: seasonAttemptRows },
+    { data: topicRows },
   ] = await Promise.all([
     supabase.from('attempts').select('*', { count: 'exact', head: true })
       .eq('status', 'done').in('student_id', sIds),
@@ -45,7 +47,15 @@ export default async function AdminPage() {
       .in('student_id', sIds)
       .not('nmt_score', 'is', null),
     supabase.from('attempts').select('id').eq('status', 'done').in('student_id', sIds),
+    // Тематичні тести сезону (без шкали НМТ — рахуємо у відсотках)
+    supabase.from('attempts')
+      .select('student_id, variant_id, score_total, finished_at, variants!inner(kind, topic, layout)')
+      .eq('status', 'done')
+      .eq('variants.kind', 'topic')
+      .in('student_id', sIds),
   ])
+
+  const topicStatsRows = topicStats((topicRows ?? []) as unknown as TopicAttemptRow[])
 
   // Середній бал по варіантах
   const variantStats: Record<string, { title: string; scores: number[] }> = {}
@@ -234,6 +244,49 @@ export default async function AdminPage() {
           topStudents={topStudents}
           topicMistakes={topicMistakes}
         />
+
+        {/* Тематичні тести */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+            <h2 className="font-bold text-[#1a2e1a]">🎯 Тести за темами</h2>
+            <span className="text-xs text-[#7a9a7a]">
+              {topicStatsRows.reduce((s, t) => s + t.attempts, 0)} спроб · результат у % від максимуму
+            </span>
+          </div>
+          {!topicStatsRows.length ? (
+            <p className="text-sm text-[#7a9a7a]">Учні ще не проходили тематичних тестів</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#e8ede8]">
+                    {['Тема', 'Тестів', 'Учнів', 'Спроб', 'Середній результат'].map(h => (
+                      <th key={h} className="text-left py-2 px-2 text-[#7a9a7a] font-medium text-xs whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {topicStatsRows.map(t => (
+                    <tr key={t.topic} className="border-b border-[#f5f7f5]">
+                      <td className="py-2.5 px-2 text-[#1a2e1a] min-w-[180px]">{t.topic}</td>
+                      <td className="py-2.5 px-2 text-center text-[#556655]">{t.tests}</td>
+                      <td className="py-2.5 px-2 text-center text-[#556655]">{t.students}</td>
+                      <td className="py-2.5 px-2 text-center text-[#556655]">{t.attempts}</td>
+                      <td className="py-2.5 px-2 min-w-[160px]">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-[#f0f7f0] rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${pctBar(t.avgPct)}`} style={{ width: `${t.avgPct}%` }} />
+                          </div>
+                          <span className={`font-bold w-10 text-right ${pctColor(t.avgPct)}`}>{t.avgPct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 

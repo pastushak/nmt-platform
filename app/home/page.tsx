@@ -5,6 +5,7 @@ import { requireStudentAccess } from '@/lib/access'
 import StudentHeader from '@/components/StudentHeader'
 import Footer from '@/components/ui/Footer'
 import { seasonLabel } from '@/lib/season'
+import { topicStats, type TopicAttemptRow } from '@/lib/topic-stats'
 
 export default async function HomePage() {
   const supabase = createServerSupabaseClient()
@@ -21,7 +22,7 @@ export default async function HomePage() {
   ] = await Promise.all([
     supabase.from('users').select('name, role').eq('id', user.id).single(),
     supabase.from('attempts')
-      .select('nmt_score, score_total, finished_at, variant_id, started_at, variants(kind)')
+      .select('nmt_score, score_total, finished_at, variant_id, started_at, variants(kind, topic, layout)')
       .eq('student_id', user.id)
       .eq('status', 'done')
       .order('finished_at', { ascending: false }),
@@ -38,6 +39,11 @@ export default async function HomePage() {
   // Повні варіанти НМТ окремо від тематичних тестів
   const attempts = (allAttempts ?? []).filter(a => (a.variants as any)?.kind !== 'topic')
   const topicAttemptsCount = (allAttempts ?? []).length - attempts.length
+  // Середній найкращий результат за темами (%)
+  const myTopics = topicStats((allAttempts ?? []) as unknown as TopicAttemptRow[])
+  const topicAvgBest = myTopics.length
+    ? Math.round(myTopics.reduce((s, t) => s + t.bestPct, 0) / myTopics.length)
+    : null
 
   const nmtScores = (attempts ?? []).filter(a => a.nmt_score).map(a => a.nmt_score!)
   const best = nmtScores.length ? Math.max(...nmtScores) : null
@@ -202,6 +208,7 @@ export default async function HomePage() {
               <p className="text-sm text-[#7a9a7a] leading-relaxed">
                 Короткі тести з однієї теми — щоб підтягнути слабкі місця
                 {topicAttemptsCount > 0 ? ` · пройдено ${topicAttemptsCount}` : ''}
+                {topicAvgBest !== null ? ` · середній результат ${topicAvgBest}%` : ''}
               </p>
               <div className="flex items-center gap-1 text-[#0ead69] text-sm font-semibold mt-4 group-hover:gap-2 transition-all">
                 Перейти <span>→</span>
