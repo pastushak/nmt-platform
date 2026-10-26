@@ -4,7 +4,8 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import StudentActions from '@/components/admin/StudentActions'
 import AddStudentButton from '@/components/admin/AddStudentButton'
 import AdminHeader from '@/components/admin/AdminHeader'
-import { CURRENT_SEASON, CURRENT_SEASON_FILTER, seasonLabel, safeIds } from '@/lib/season'
+import { CURRENT_SEASON, CURRENT_SEASON_FILTER, seasonLabel } from '@/lib/season'
+import { fetchAll, fetchAllIn } from '@/lib/fetch-all'
 
 export default async function StudentsPage({
   searchParams,
@@ -24,27 +25,26 @@ export default async function StudentsPage({
     .rpc('get_my_profile')
   if (profile?.role !== 'teacher') redirect('/home')
 
-  let studentsQuery = supabase
-    .from('users')
-    .select('*')
-    .eq('role', 'student')
-  studentsQuery = isArchive
-    ? studentsQuery.eq('season', season)
-    : studentsQuery.or(CURRENT_SEASON_FILTER)
-  const { data: students } = await studentsQuery.order('name')
+  const students = await fetchAll<any>((from, to) => {
+    const q = supabase.from('users').select('*').eq('role', 'student')
+    return (isArchive ? q.eq('season', season) : q.or(CURRENT_SEASON_FILTER))
+      .order('name').order('id').range(from, to)
+  })
 
   // Усі сезони, що є в базі — для перемикача
-  const { data: seasonRows } = await supabase
+  const seasonRows = await fetchAll<{ season: string }>((from, to) => supabase
     .from('users').select('season').eq('role', 'student').not('season', 'is', null)
+    .order('id').range(from, to))
   const seasons = Array.from(new Set([CURRENT_SEASON, ...(seasonRows ?? []).map(r => r.season as string)]))
     .sort((a, b) => b.localeCompare(a))
 
   // Тільки повні варіанти НМТ — тематичні тести не мають балу 100–200
-  const { data: attemptRows } = await supabase
-    .from('attempts')
-    .select('student_id, nmt_score, finished_at, variants(kind)')
-    .eq('status', 'done')
-    .in('student_id', safeIds((students ?? []).map(s => s.id)))
+  const attemptRows = await fetchAllIn<any>((students ?? []).map(s => s.id), (part, from, to) =>
+    supabase.from('attempts')
+      .select('student_id, nmt_score, finished_at, variants(kind)')
+      .eq('status', 'done')
+      .in('student_id', part)
+      .order('id').range(from, to))
   const attempts = (attemptRows ?? []).filter(a => (a.variants as any)?.kind !== 'topic')
 
   const statsMap: Record<string, { count: number; best: number | null; last: number | null }> = {}

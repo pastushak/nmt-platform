@@ -4,7 +4,8 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import AdminHeader from '@/components/admin/AdminHeader'
 import AdminDashboardCharts from '@/components/admin/AdminDashboardCharts'
 import { topicStats, pctColor, pctBar, type TopicAttemptRow } from '@/lib/topic-stats'
-import { CURRENT_SEASON_FILTER, seasonLabel, safeIds, chunk } from '@/lib/season'
+import { CURRENT_SEASON_FILTER, seasonLabel, safeIds } from '@/lib/season'
+import { fetchAll, fetchAllIn } from '@/lib/fetch-all'
 
 export default async function AdminPage() {
   const supabase = createServerSupabaseClient()
@@ -17,21 +18,23 @@ export default async function AdminPage() {
 
   // --- Базова статистика (незалежні запити — паралельно) ---
   // Учні поточного сезону — уся статистика дашборду рахується тільки по них
-  const [{ count: variantsCount }, { data: seasonStudents }] = await Promise.all([
+  const [{ count: variantsCount }, seasonStudents] = await Promise.all([
     supabase.from('variants').select('*', { count: 'exact', head: true }),
-    supabase.from('users').select('id').eq('role', 'student').or(CURRENT_SEASON_FILTER),
+    fetchAll<{ id: string }>((from, to) => supabase.from('users').select('id')
+      .eq('role', 'student').or(CURRENT_SEASON_FILTER).order('id').range(from, to)),
   ])
   const studentIdList = (seasonStudents ?? []).map(s => s.id)
   const sIds = safeIds(studentIdList)
   const studentsCount = studentIdList.length
 
   // --- Спроби сезону: лічильник, останні результати, бали, id для відповідей — паралельно ---
+  // Списки спроб догружаємо сторінками (fetchAllIn), бо Supabase обрізає відповідь на 1000 рядках
   const [
     { count: attemptsCount },
     { data: recentAttempts },
-    { data: allAttempts },
-    { data: seasonAttemptRows },
-    { data: topicRows },
+    allAttempts,
+    seasonAttemptRows,
+    topicRows,
   ] = await Promise.all([
     supabase.from('attempts').select('*', { count: 'exact', head: true })
       .eq('status', 'done').in('student_id', sIds),
@@ -41,18 +44,22 @@ export default async function AdminPage() {
       .in('student_id', sIds)
       .order('finished_at', { ascending: false })
       .limit(8),
-    supabase.from('attempts')
+    fetchAllIn<any>(studentIdList, (part, from, to) => supabase.from('attempts')
       .select('variant_id, nmt_score, variants(title), finished_at, started_at, student_id')
       .eq('status', 'done')
-      .in('student_id', sIds)
-      .not('nmt_score', 'is', null),
-    supabase.from('attempts').select('id').eq('status', 'done').in('student_id', sIds),
+      .in('student_id', part)
+      .not('nmt_score', 'is', null)
+      .order('id').range(from, to)),
+    fetchAllIn<{ id: string }>(studentIdList, (part, from, to) => supabase.from('attempts')
+      .select('id').eq('status', 'done').in('student_id', part)
+      .order('id').range(from, to)),
     // Тематичні тести сезону (без шкали НМТ — рахуємо у відсотках)
-    supabase.from('attempts')
+    fetchAllIn<any>(studentIdList, (part, from, to) => supabase.from('attempts')
       .select('student_id, variant_id, score_total, finished_at, variants!inner(kind, topic, layout)')
       .eq('status', 'done')
       .eq('variants.kind', 'topic')
-      .in('student_id', sIds),
+      .in('student_id', part)
+      .order('id').range(from, to)),
   ])
 
   const topicStatsRows = topicStats((topicRows ?? []) as unknown as TopicAttemptRow[])
@@ -140,12 +147,10 @@ export default async function AdminPage() {
   // Відповіді лише зі спроб учнів поточного сезону
   const seasonAttemptIds = (seasonAttemptRows ?? []).map(a => a.id)
 
-  const answerParts = await Promise.all(
-    chunk(seasonAttemptIds).map(part =>
-      supabase.from('answers').select('question_id, score').in('attempt_id', part))
-  )
-  const seasonAnswers: { question_id: string; score: number }[] =
-    answerParts.flatMap(r => (r.data ?? []) as { question_id: string; score: number }[])
+  // Раніше: шматок зі 100 спроб × 22 відповіді = 2200 рядків, а приходило лише 1000
+  const seasonAnswers = await fetchAllIn<{ question_id: string; score: number }>(
+    seasonAttemptIds, (part, from, to) => supabase.from('answers')
+      .select('question_id, score').in('attempt_id', part).order('id').range(from, to))
   const wrongAnswers = seasonAnswers.filter(a => a.score === 0)
 
   const mistakeCount: Record<string, number> = {}
@@ -182,9 +187,8 @@ export default async function AdminPage() {
       answerCount[a.question_id] = (answerCount[a.question_id] ?? 0) + 1
     }
 
-    const { data: allQuestions } = await supabase
-      .from('questions')
-      .select('id, topic')
+    const allQuestions = await fetchAll<{ id: string; topic: string | null }>((from, to) =>
+      supabase.from('questions').select('id, topic').order('id').range(from, to))
 
     for (const q of allQuestions ?? []) {
       const topic = q.topic ?? 'Без теми'

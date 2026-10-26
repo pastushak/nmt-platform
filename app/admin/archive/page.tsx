@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import AdminHeader from '@/components/admin/AdminHeader'
-import { CURRENT_SEASON, seasonLabel, safeIds } from '@/lib/season'
+import { CURRENT_SEASON, seasonLabel } from '@/lib/season'
+import { fetchAll, fetchAllIn } from '@/lib/fetch-all'
 
 export default async function ArchivePage() {
   const supabase = createServerSupabaseClient()
@@ -13,20 +14,21 @@ export default async function ArchivePage() {
   if (profile?.role !== 'teacher') redirect('/home')
 
   // Учні минулих сезонів
-  const { data: archived } = await supabase
-    .from('users')
-    .select('id, name, season')
-    .eq('role', 'student')
-    .not('season', 'is', null)
-    .neq('season', CURRENT_SEASON)
+  // Архів росте щороку — догружаємо сторінками (Supabase обрізає на 1000 рядках)
+  const students = await fetchAll<{ id: string; name: string; season: string }>((from, to) =>
+    supabase.from('users')
+      .select('id, name, season')
+      .eq('role', 'student')
+      .not('season', 'is', null)
+      .neq('season', CURRENT_SEASON)
+      .order('id').range(from, to))
 
-  const students = archived ?? []
-
-  const { data: attemptRows } = await supabase
-    .from('attempts')
-    .select('student_id, nmt_score, variants(kind)')
-    .eq('status', 'done')
-    .in('student_id', safeIds(students.map(s => s.id)))
+  const attemptRows = await fetchAllIn<any>(students.map(s => s.id), (part, from, to) =>
+    supabase.from('attempts')
+      .select('student_id, nmt_score, variants(kind)')
+      .eq('status', 'done')
+      .in('student_id', part)
+      .order('id').range(from, to))
 
   const fullAttempts = (attemptRows ?? []).filter(a => (a.variants as any)?.kind !== 'topic')
 

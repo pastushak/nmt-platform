@@ -6,6 +6,7 @@ import DeleteAttemptButton from '@/components/admin/DeleteAttemptButton'
 import AdminHeader from '@/components/admin/AdminHeader'
 import { isCurrentSeason, seasonLabel } from '@/lib/season'
 import { getLayout, maxScore } from '@/lib/variant-layout'
+import { fetchAllIn } from '@/lib/fetch-all'
 
 export const revalidate = 0
 
@@ -43,20 +44,11 @@ export default async function StudentDetailPage({
   const topicAttempts = (allAttempts ?? []).filter(a => (a.variants as any)?.kind === 'topic').reverse()
 
   // Статистика класу для порівняння
-  const { data: classAttempts } = await supabase
-    .from('attempts')
-    .select('variant_id, nmt_score')
-    .eq('status', 'done')
-    .not('nmt_score', 'is', null)
-
+  // Середнє рахує БД (раніше тягнули всі спроби класу — обрізалось на 1000 рядках)
+  const { data: classRows } = await supabase.rpc('class_variant_averages')
   const classAvg: Record<string, number> = {}
-  const grouped: Record<string, number[]> = {}
-  for (const a of classAttempts ?? []) {
-    if (!grouped[a.variant_id]) grouped[a.variant_id] = []
-    if (a.nmt_score) grouped[a.variant_id].push(a.nmt_score)
-  }
-  for (const [vid, scores] of Object.entries(grouped)) {
-    classAvg[vid] = Math.round(scores.reduce((s, x) => s + x, 0) / scores.length)
+  for (const r of (classRows ?? []) as { variant_id: string; avg_score: number }[]) {
+    classAvg[r.variant_id] = r.avg_score
   }
 
   // Топ помилок
@@ -64,11 +56,9 @@ export default async function StudentDetailPage({
   const topMistakes: { qid: string; count: number; question: any }[] = []
 
   if (attemptIds.length > 0) {
-    const { data: wrongAnswers } = await supabase
-      .from('answers')
-      .select('question_id')
-      .eq('score', 0)
-      .in('attempt_id', attemptIds)
+    const wrongAnswers = await fetchAllIn<{ question_id: string }>(attemptIds, (part, from, to) =>
+      supabase.from('answers').select('question_id')
+        .eq('score', 0).in('attempt_id', part).order('id').range(from, to))
 
     const mistakeCount: Record<string, number> = {}
     for (const a of wrongAnswers ?? []) {

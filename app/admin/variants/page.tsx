@@ -5,6 +5,7 @@ import PublishToggle from '@/components/admin/PublishToggle'
 import DeleteVariantButton from '@/components/admin/DeleteVariantButton'
 import AdminHeader from '@/components/admin/AdminHeader'
 import { getLayout, isTopicVariant, totalQuestions } from '@/lib/variant-layout'
+import { fetchAll } from '@/lib/fetch-all'
 
 export default async function VariantsPage() {
   const supabase = createServerSupabaseClient()
@@ -20,11 +21,13 @@ export default async function VariantsPage() {
     .select('*')
     .order('created_at', { ascending: false })
 
-  const { data: questionCounts } = await supabase
-    .from('questions').select('variant_id')
-
-  const { data: attemptCounts } = await supabase
-    .from('attempts').select('variant_id').eq('status', 'done')
+  // Усі питання й спроби — сторінками (Supabase обрізає відповідь на 1000 рядках)
+  const [questionCounts, attemptCounts] = await Promise.all([
+    fetchAll<{ variant_id: string }>((from, to) => supabase
+      .from('questions').select('variant_id').order('id').range(from, to)),
+    fetchAll<{ variant_id: string }>((from, to) => supabase
+      .from('attempts').select('variant_id').eq('status', 'done').order('id').range(from, to)),
+  ])
 
   const qMap: Record<string, number> = {}
   for (const q of questionCounts ?? []) {

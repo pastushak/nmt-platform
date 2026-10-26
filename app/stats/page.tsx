@@ -5,6 +5,7 @@ import { requireStudentAccess } from '@/lib/access'
 import StatsCharts from '@/components/stats/StatsCharts'
 import { topicStats as computeTopicStats, pctColor, pctBar, type TopicAttemptRow } from '@/lib/topic-stats'
 import StudentHeader from '@/components/StudentHeader'
+import { fetchAllIn } from '@/lib/fetch-all'
 import Footer from '@/components/ui/Footer'
 
 export default async function StatsPage() {
@@ -71,18 +72,17 @@ export default async function StatsPage() {
   }[] = []
 
   if (attemptIds.length > 0) {
-    const { data: allAnswers } = await supabase
-      .from('answers')
-      .select('question_id, score')
-      .in('attempt_id', attemptIds)
+    // Відповідей швидко стає понад 1000 (≈45 спроб × 22) — догружаємо сторінками
+    const allAnswers = await fetchAllIn<{ question_id: string; score: number }>(attemptIds, (part, from, to) =>
+      supabase.from('answers').select('question_id, score')
+        .in('attempt_id', part).order('id').range(from, to))
 
-    if (allAnswers && allAnswers.length > 0) {
+    if (allAnswers.length > 0) {
       const questionIds = Array.from(new Set(allAnswers.map(a => a.question_id)))
 
-      const { data: questions } = await supabase
-        .from('questions')
-        .select('id, topic, type')
-        .in('id', questionIds)
+      const questions = await fetchAllIn<{ id: string; topic: string | null; type: string }>(questionIds, (part, from, to) =>
+        supabase.from('questions').select('id, topic, type')
+          .in('id', part).order('id').range(from, to))
 
       const questionMap: Record<string, { topic: string; type: string }> = {}
       for (const q of questions ?? []) {
