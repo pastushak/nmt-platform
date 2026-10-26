@@ -38,6 +38,7 @@ export default async function ResultsPage({
     .from('explanations')
     .select('question_id, explanation')
     .eq('attempt_id', params.attemptId)
+    .not('explanation', 'is', null) // рядок без тексту — пояснення, що ще готується
   const initialExplanations = Object.fromEntries(
     (explanations ?? []).map(e => [e.question_id, e.explanation])
   )

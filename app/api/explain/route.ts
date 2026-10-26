@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { MAX_EXPLAINS, EXPLAIN_MODEL } from '@/lib/explain'
+import { MAX_EXPLAINS, MAX_EXPLAINS_PER_DAY, EXPLAIN_MODEL } from '@/lib/explain'
 import { isCurrentSeason } from '@/lib/season'
 import { POINTS } from '@/lib/variant-layout'
 
@@ -28,17 +28,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Спробу не знайдено' }, { status: 403 })
   }
 
+  // Скільки пояснень уже є в цій спробі (для лічильника на сторінці)
+  const countUsed = async () => {
+    const { count } = await supabase
+      .from('explanations').select('id', { count: 'exact', head: true }).eq('attempt_id', attemptId)
+    return count ?? 0
+  }
+
   // Уже пояснено — віддаємо збережене, ліміт не витрачається
   const { data: existing } = await supabase
     .from('explanations').select('explanation')
-    .eq('attempt_id', attemptId).eq('question_id', questionId).maybeSingle()
-  const { count: used } = await supabase
-    .from('explanations').select('id', { count: 'exact', head: true }).eq('attempt_id', attemptId)
-  if (existing) return NextResponse.json({ explanation: existing.explanation, used: used ?? 0, cached: true })
-
-  if ((used ?? 0) >= MAX_EXPLAINS) {
-    return NextResponse.json({ error: `Ліміт пояснень вичерпано (${MAX_EXPLAINS}/${MAX_EXPLAINS})`, used }, { status: 429 })
-  }
+    .eq('attempt_id', attemptId).eq('question_id', questionId)
+    .not('explanation', 'is', null).maybeSingle()
+  if (existing) return NextResponse.json({ explanation: existing.explanation, used: await countUsed(), cached: true })
 
   const { data: q } = await supabase
     .from('questions')
@@ -55,7 +57,34 @@ export async function POST(req: NextRequest) {
   // Пояснюємо лише помилки
   const maxPts = POINTS[q.type as keyof typeof POINTS] ?? 1
   if (ans && (ans.score ?? 0) >= maxPts) {
-    return NextResponse.json({ error: 'Відповідь правильна — пояснення не потрібне', used }, { status: 400 })
+    return NextResponse.json({ error: 'Відповідь правильна — пояснення не потрібне', used: await countUsed() }, { status: 400 })
+  }
+
+  // Атомарно бронюємо місце під пояснення: база перевіряє ліміти
+  // (на спробу і на добу) й не пускає одночасні запити повз них
+  const { data: reservation, error: resErr } = await supabase
+    .rpc('reserve_explanation', { p_attempt: attemptId, p_question: questionId })
+  if (resErr) {
+    console.error('reserve_explanation failed', resErr.message)
+    return NextResponse.json({ error: 'Не вдалося отримати пояснення. Спробуй ще раз.' }, { status: 500 })
+  }
+  if (reservation !== 'ok') {
+    const used = await countUsed()
+    switch (reservation) {
+      case 'cached': {
+        const { data: ready } = await supabase.from('explanations').select('explanation')
+          .eq('attempt_id', attemptId).eq('question_id', questionId).maybeSingle()
+        return NextResponse.json({ explanation: ready?.explanation, used, cached: true })
+      }
+      case 'busy':
+        return NextResponse.json({ error: 'Пояснення вже готується — зачекай кілька секунд і онови сторінку.', used }, { status: 409 })
+      case 'limit_attempt':
+        return NextResponse.json({ error: `Ліміт пояснень вичерпано (${MAX_EXPLAINS}/${MAX_EXPLAINS})`, used }, { status: 429 })
+      case 'limit_day':
+        return NextResponse.json({ error: `Денний ліміт пояснень вичерпано (${MAX_EXPLAINS_PER_DAY} за добу). Спробуй завтра.`, used }, { status: 429 })
+      default:
+        return NextResponse.json({ error: 'Спробу не знайдено', used }, { status: 403 })
+    }
   }
 
   const fmtPairs = (m: Record<string, string> | null) =>
@@ -122,13 +151,14 @@ ${details}
   }
 
   if (!text) {
-    // Не зберігаємо — ліміт не витрачається
-    return NextResponse.json({ error: 'Не вдалося отримати пояснення. Спробуй ще раз.', used }, { status: 502 })
+    // Знімаємо бронь — ліміт не витрачається
+    await supabase.rpc('release_explanation', { p_attempt: attemptId, p_question: questionId })
+    return NextResponse.json({ error: 'Не вдалося отримати пояснення. Спробуй ще раз.', used: await countUsed() }, { status: 502 })
   }
 
-  const { error: insErr } = await supabase
-    .from('explanations').insert({ attempt_id: attemptId, question_id: questionId, user_id: user.id, explanation: text })
-  if (insErr) console.error('Explanation save failed', insErr.message)
+  const { error: finErr } = await supabase
+    .rpc('finish_explanation', { p_attempt: attemptId, p_question: questionId, p_text: text })
+  if (finErr) console.error('Explanation save failed', finErr.message)
 
-  return NextResponse.json({ explanation: text, used: (used ?? 0) + (insErr ? 0 : 1), cached: false })
+  return NextResponse.json({ explanation: text, used: await countUsed(), cached: false })
 }
