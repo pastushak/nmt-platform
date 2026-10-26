@@ -7,7 +7,7 @@ import SeasonSwitcher from '@/components/admin/SeasonSwitcher'
 import { fetchAll, fetchAllIn } from '@/lib/fetch-all'
 
 export default async function ArchivePage() {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 

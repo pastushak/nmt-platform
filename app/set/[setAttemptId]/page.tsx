@@ -5,11 +5,12 @@ import SetClient from '@/components/SetClient'
 import type { Question } from '@/lib/types'
 
 export default async function SetAttemptPage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { setAttemptId: string }
+  params: Promise<{ setAttemptId: string }>
 }) {
-  const supabase = createServerSupabaseClient()
+  const params = await paramsPromise
+  const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
   await requireStudentAccess(supabase, user.id)

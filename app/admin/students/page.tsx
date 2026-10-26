@@ -8,11 +8,12 @@ import { currentSeasonFilter, getCurrentSeason, seasonLabel } from '@/lib/season
 import { fetchAll, fetchAllIn } from '@/lib/fetch-all'
 
 export default async function StudentsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { season?: string }
+  searchParams: Promise<{ season?: string }>
 }) {
-  const supabase = createServerSupabaseClient()
+  const searchParams = await searchParamsPromise
+  const supabase = await createServerSupabaseClient()
   const CURRENT_SEASON = await getCurrentSeason(supabase)
   const season = searchParams.season && searchParams.season !== CURRENT_SEASON
     ? searchParams.season

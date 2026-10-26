@@ -8,7 +8,7 @@ import { seasonLabel } from '@/lib/season'
 import { topicStats, type TopicAttemptRow } from '@/lib/topic-stats'
 
 export default async function HomePage() {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
   const { currentSeason } = await requireStudentAccess(supabase, user.id)

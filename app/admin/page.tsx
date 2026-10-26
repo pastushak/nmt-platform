@@ -8,7 +8,7 @@ import { currentSeasonFilter, getCurrentSeason, seasonLabel, safeIds } from '@/l
 import { fetchAll, fetchAllIn } from '@/lib/fetch-all'
 
 export default async function AdminPage() {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 

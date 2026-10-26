@@ -9,7 +9,7 @@ import { fetchAllIn } from '@/lib/fetch-all'
 import Footer from '@/components/ui/Footer'
 
 export default async function StatsPage() {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
   const { currentSeason } = await requireStudentAccess(supabase, user.id)

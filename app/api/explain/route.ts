@@ -7,7 +7,7 @@ import { POINTS } from '@/lib/variant-layout'
 // Пояснення помилки. Усі дані (умова, правильна відповідь, відповідь учня)
 // беремо з бази, а не з запиту — так API не можна використати для довільних промптів.
 export async function POST(req: NextRequest) {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Потрібно увійти' }, { status: 401 })
 

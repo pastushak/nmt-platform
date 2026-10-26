@@ -41,7 +41,7 @@ export default function TestClient({ variant, questions, userId, resume = null, 
   const [showConfirm, setShowConfirm] = useState(false)
   const [showInstruction, setShowInstruction] = useState(!resume)
   const supabase = createClient()
-  const saveTimer = useRef<NodeJS.Timeout>()
+  const saveTimer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   async function createAttempt() {
     const { data } = await supabase

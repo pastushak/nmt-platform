@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const reason = searchParams.get('reason')
 
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   await supabase.auth.signOut()
 
   const param = reason === 'archived' ? 'archived=1' : reason === 'blocked' ? 'blocked=1' : ''

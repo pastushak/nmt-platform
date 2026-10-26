@@ -4,8 +4,9 @@ import { cookies } from 'next/headers'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export function createServerSupabaseClient() {
-  const cookieStore = cookies()
+// Next 15: cookies() асинхронна, тож і клієнт створюється через await
+export async function createServerSupabaseClient() {
+  const cookieStore = await cookies()
   return createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name: string) {

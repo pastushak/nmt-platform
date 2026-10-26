@@ -8,7 +8,7 @@ import { getLayout, isTopicVariant, totalQuestions } from '@/lib/variant-layout'
 import { fetchAll } from '@/lib/fetch-all'
 
 export default async function VariantsPage() {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 

@@ -55,7 +55,7 @@ export default function SetClient({
   const [submitting, setSubmitting] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const supabase = createClient()
-  const saveTimer = useRef<NodeJS.Timeout>()
+  const saveTimer = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const questions = activeSubject === 'math' ? mathQuestions : ukrainianQuestions
   const current = activeSubject === 'math' ? currentMath : currentUkr

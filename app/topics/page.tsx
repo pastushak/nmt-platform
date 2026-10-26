@@ -7,7 +7,7 @@ import Footer from '@/components/ui/Footer'
 import { getLayout, maxScore, topicOrder, totalQuestions } from '@/lib/variant-layout'
 
 export default async function TopicsPage() {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
   const { currentSeason } = await requireStudentAccess(supabase, user.id)

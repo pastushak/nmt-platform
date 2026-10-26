@@ -5,11 +5,12 @@ import TestClient from '@/components/TestClient'
 import type { Question } from '@/lib/types'
 
 export default async function TestPage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { variantId: string }
+  params: Promise<{ variantId: string }>
 }) {
-  const supabase = createServerSupabaseClient()
+  const params = await paramsPromise
+  const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
   const profile = await requireStudentAccess(supabase, user.id)

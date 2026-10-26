@@ -4,11 +4,12 @@ import { requireStudentAccess } from '@/lib/access'
 import ResultsClient from '@/components/ResultsClient'
 
 export default async function ResultsPage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { attemptId: string }
+  params: Promise<{ attemptId: string }>
 }) {
-  const supabase = createServerSupabaseClient()
+  const params = await paramsPromise
+  const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
   await requireStudentAccess(supabase, user.id)
