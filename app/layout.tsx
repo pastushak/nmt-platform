@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'НМТ Математика — Підготовка 2026',
+  title: 'НМТ Математика — Підготовка 2027',
   description: 'Платформа підготовки до НМТ з математики',
 }
 

@@ -19,6 +19,7 @@ interface Props {
   pastAttempts: PastAttempt[]
   inProgressId: string | null
   userId: string
+  season: string // поточний сезон з БД
 }
 
 export default function SetLauncher({
@@ -28,6 +29,7 @@ export default function SetLauncher({
   ukrainianCount,
   pastAttempts,
   inProgressId,
+  season,
   userId,
 }: Props) {
   const [loading, setLoading] = useState(false)
@@ -90,7 +92,7 @@ export default function SetLauncher({
       <div>
         <div className="inline-flex items-center gap-2 bg-white border border-[#c8e6c9] rounded-full px-3 py-1 text-xs font-semibold text-[#2e7d32] mb-3">
           <span className="w-2 h-2 bg-[#0ead69] rounded-full"></span>
-          НМТ 2026 · Сет-режим
+          НМТ {season} · Сет-режим
         </div>
         <h1 className="text-2xl font-bold text-[#1a2e1a] tracking-tight mb-1">
           Повний сет НМТ

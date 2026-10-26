@@ -62,6 +62,7 @@ export default async function SetPage() {
           pastAttempts={pastAttempts ?? []}
           inProgressId={inProgress?.id ?? null}
           userId={user.id}
+          season={currentSeason}
         />
       </main>
 
