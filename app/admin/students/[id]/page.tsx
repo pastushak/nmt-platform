@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import StudentDetailCharts from '@/components/admin/StudentDetailCharts'
 import DeleteAttemptButton from '@/components/admin/DeleteAttemptButton'
+import { ViolationTag } from '@/components/ViolationBanner'
 import AdminHeader from '@/components/admin/AdminHeader'
 import { getCurrentSeason, isCurrentSeason, seasonLabel } from '@/lib/season'
 import MoveToCurrentSeason from '@/components/admin/MoveToCurrentSeason'
@@ -170,7 +171,7 @@ export default async function StudentDetailPage({
                 const pct = max ? Math.round((a.score_total / max) * 100) : 0
                 return (
                   <div key={a.id} className="flex items-center justify-between gap-3 text-sm py-1.5 border-b border-[#f5f7f5]">
-                    <span className="text-[#1a2e1a] truncate">{(a.variants as any)?.title}</span>
+                    <span className="text-[#1a2e1a] truncate">{(a.variants as any)?.title}<ViolationTag violations={a.violations} annulled={a.annulled} /></span>
                     <span className="flex items-center gap-3 flex-shrink-0">
                       <span className="text-xs text-[#7a9a7a]">{new Date(a.finished_at!).toLocaleDateString('uk-UA')}</span>
                       <span className="font-mono text-[#556655]">{a.score_total}/{max}</span>
@@ -255,8 +256,9 @@ export default async function StudentDetailPage({
                     : '—'
                   return (
                     <tr key={a.id} className="border-b border-[#f5f7f5] hover:bg-[#f8faf8]">
-                      <td className="py-2.5 px-2 font-medium text-[#1a2e1a] max-w-[160px] truncate">
+                      <td className="py-2.5 px-2 font-medium text-[#1a2e1a] max-w-[200px] truncate">
                         {(a.variants as any)?.title}
+                        <ViolationTag violations={a.violations} annulled={a.annulled} />
                       </td>
                       <td className="py-2.5 px-2 text-[#7a9a7a]">
                         {new Date(a.finished_at!).toLocaleDateString('uk-UA')}

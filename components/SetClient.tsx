@@ -9,6 +9,8 @@ import SingleQuestionComponent from '@/components/questions/SingleQuestion'
 import MatchingQuestionComponent from '@/components/questions/MatchingQuestion'
 import OpenQuestionComponent from '@/components/questions/OpenQuestion'
 import toast, { Toaster } from 'react-hot-toast'
+import { useTabGuard } from '@/lib/use-tab-guard'
+import { ViolationWarning, AnnulledScreen } from '@/components/TabGuardUI'
 
 type Subject = 'math' | 'ukrainian'
 
@@ -56,6 +58,9 @@ export default function SetClient({
   const [showConfirm, setShowConfirm] = useState(false)
   const supabase = createClient()
   const saveTimer = useRef<NodeJS.Timeout | undefined>(undefined)
+  // Контроль виходу з вкладки: 1–2 — попередження, 3-тє — анулювання (рахує БД)
+  const [warning, setWarning] = useState<number | null>(null)
+  const [annulled, setAnnulled] = useState(false)
 
   const questions = activeSubject === 'math' ? mathQuestions : ukrainianQuestions
   const current = activeSubject === 'math' ? currentMath : currentUkr
@@ -133,6 +138,23 @@ export default function SetClient({
 
   const submitRef = useRef(false)
 
+  useTabGuard(!submitting && !annulled, async () => {
+    if (submitRef.current) return
+    const { data, error } = await supabase.rpc('report_violation', {
+      p_kind: 'set', p_id: attemptId, p_answers: mathAnswers, p_ukr: ukrainianAnswers,
+    })
+    if (error || !data) return
+    if (data.annulled) {
+      submitRef.current = true
+      clearTimeout(saveTimer.current)
+      setShowConfirm(false)
+      setWarning(null)
+      setAnnulled(true)
+    } else {
+      setWarning(data.violations)
+    }
+  })
+
   async function handleSubmit() {
     if (submitRef.current) return
     submitRef.current = true
@@ -186,6 +208,14 @@ export default function SetClient({
   return (
     <div className="min-h-screen bg-[#f5f7f5] flex flex-col">
       <Toaster position="top-center" />
+
+      {warning !== null && <ViolationWarning count={warning} onClose={() => setWarning(null)} />}
+      {annulled && (
+        <AnnulledScreen
+          score={null}
+          onContinue={() => { window.location.href = `/set-results/${attemptId}` }}
+        />
+      )}
 
       {/* Шапка */}
       <header className="bg-white border-b border-[#e8ede8] sticky top-0 z-10">

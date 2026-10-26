@@ -10,6 +10,8 @@ import SingleQuestionComponent from '@/components/questions/SingleQuestion'
 import MatchingQuestionComponent from '@/components/questions/MatchingQuestion'
 import OpenQuestionComponent from '@/components/questions/OpenQuestion'
 import TestInstructionModal from '@/components/TestInstructionModal'
+import { useTabGuard } from '@/lib/use-tab-guard'
+import { ViolationWarning, AnnulledScreen, MaterialsOverlay } from '@/components/TabGuardUI'
 import toast, { Toaster } from 'react-hot-toast'
 
 interface Props {
@@ -42,6 +44,10 @@ export default function TestClient({ variant, questions, userId, resume = null, 
   const [showInstruction, setShowInstruction] = useState(!resume)
   const supabase = createClient()
   const saveTimer = useRef<NodeJS.Timeout | undefined>(undefined)
+  // Контроль виходу з вкладки: 1–2 — попередження, 3-тє — анулювання (рахує БД)
+  const [warning, setWarning] = useState<number | null>(null)
+  const [annulled, setAnnulled] = useState<{ score: number | null } | null>(null)
+  const [showMaterials, setShowMaterials] = useState(false)
 
   async function createAttempt() {
     const { data } = await supabase
@@ -114,14 +120,8 @@ export default function TestClient({ variant, questions, userId, resume = null, 
 
   const submitRef = useRef(false)
 
-  async function handleSubmit() {
-    if (!attemptId || submitRef.current) return
-    submitRef.current = true
-    setSubmitting(true)
-    setShowConfirm(false)
-    clearTimeout(saveTimer.current)
-
-    // Бал рахує база: надсилаємо лише відповіді
+  // Відповіді для сервера (бал рахує база)
+  function buildPayload() {
     const payload: Record<string, Omit<AnswerState, 'type'>> = {}
     for (const [qid, a] of Object.entries(answers)) {
       payload[qid] = {
@@ -130,6 +130,35 @@ export default function TestClient({ variant, questions, userId, resume = null, 
         answer_open: a.answer_open,
       }
     }
+    return payload
+  }
+
+  useTabGuard(!!attemptId && !showInstruction && !submitting && !annulled, async () => {
+    if (!attemptId || submitRef.current) return
+    const { data, error } = await supabase.rpc('report_violation', {
+      p_kind: 'attempt', p_id: attemptId, p_answers: buildPayload(),
+    })
+    if (error || !data) return
+    if (data.annulled) {
+      submitRef.current = true
+      clearTimeout(saveTimer.current)
+      setShowConfirm(false)
+      setShowMaterials(false)
+      setWarning(null)
+      setAnnulled({ score: data.result?.score_total ?? null })
+    } else {
+      setWarning(data.violations)
+    }
+  })
+
+  async function handleSubmit() {
+    if (!attemptId || submitRef.current) return
+    submitRef.current = true
+    setSubmitting(true)
+    setShowConfirm(false)
+    clearTimeout(saveTimer.current)
+
+    const payload = buildPayload()
 
     let { error } = await supabase.rpc('submit_attempt', { p_attempt_id: attemptId, p_answers: payload })
     if (error) {
@@ -170,6 +199,15 @@ export default function TestClient({ variant, questions, userId, resume = null, 
     <div className="min-h-screen bg-[#f5f7f5] flex flex-col">
       <Toaster position="top-center" />
 
+      {showMaterials && <MaterialsOverlay onClose={() => setShowMaterials(false)} />}
+      {warning !== null && <ViolationWarning count={warning} onClose={() => setWarning(null)} />}
+      {annulled && (
+        <AnnulledScreen
+          score={annulled.score}
+          onContinue={() => router.push(`/results/${attemptId}`)}
+        />
+      )}
+
       {/* Інструкція перед тестом */}
       {showInstruction && (
         <TestInstructionModal
@@ -203,14 +241,13 @@ export default function TestClient({ variant, questions, userId, resume = null, 
                 onExpire={attemptId ? handleExpire : undefined}
               />
             </div>
-            <a
-              href="/materials"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => setShowMaterials(true)}
               className="flex-1 flex items-center justify-center text-xs font-semibold text-[#1565c0] bg-[#e3f2fd] border border-[#bbdefb] px-3 rounded-xl hover:bg-[#bbdefb] transition-colors"
             >
               📚 Матеріали
-            </a>
+            </button>
             <button
               onClick={() => setShowConfirm(true)}
               disabled={submitting}

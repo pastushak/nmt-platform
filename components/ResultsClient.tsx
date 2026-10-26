@@ -10,6 +10,7 @@ import OpenQuestionComponent from '@/components/questions/OpenQuestion'
 import MarkdownMath from '@/components/ui/MarkdownMath'
 
 import { MAX_EXPLAINS } from '@/lib/explain'
+import ViolationBanner from '@/components/ViolationBanner'
 
 function ExplainButton({ attemptId, questionId, initial, explainCount, onUsed }: {
   attemptId: string
@@ -141,6 +142,8 @@ export default function ResultsClient({ attempt, questions, answers, durationMin
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+
+        <ViolationBanner violations={attempt.violations} annulled={attempt.annulled} />
 
         {/* Загальний результат */}
         <div className="bg-gradient-to-br from-[#f0faf2] to-[#e8f5ff] rounded-2xl border border-[#e8ede8] p-8 text-center">

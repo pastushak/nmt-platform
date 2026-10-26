@@ -136,6 +136,10 @@ export default function SetLauncher({
             <span className="text-base flex-shrink-0">⏱</span>
             <span>Один таймер на обидва предмети, вільне переключення між ними</span>
           </div>
+          <div className="flex items-start gap-2">
+            <span className="text-base flex-shrink-0">🚫</span>
+            <span>Не виходь з вкладки сету: перші 2 рази — попередження, на 3-й сет <strong>анулюється</strong> (зараховуються вже введені відповіді)</span>
+          </div>
         </div>
 
         {/* Доступність варіантів */}

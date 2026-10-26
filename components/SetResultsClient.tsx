@@ -7,6 +7,7 @@ import { UKRAINIAN_MAX_SCORE } from '@/lib/scoring-ukrainian'
 import SingleQuestionComponent from '@/components/questions/SingleQuestion'
 import MatchingQuestionComponent from '@/components/questions/MatchingQuestion'
 import OpenQuestionComponent from '@/components/questions/OpenQuestion'
+import ViolationBanner from '@/components/ViolationBanner'
 
 type Subject = 'math' | 'ukrainian'
 
@@ -98,6 +99,7 @@ export default function SetResultsClient({
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        <ViolationBanner violations={attempt.violations} annulled={attempt.annulled} />
 
         {/* Загальний результат */}
         <div className="bg-gradient-to-br from-[#f0faf2] to-[#e8f5ff] rounded-2xl border border-[#e8ede8] p-6">

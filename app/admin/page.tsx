@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import AdminHeader from '@/components/admin/AdminHeader'
 import AdminDashboardCharts from '@/components/admin/AdminDashboardCharts'
+import { ViolationTag } from '@/components/ViolationBanner'
 import { topicStats, pctColor, pctBar, type TopicAttemptRow } from '@/lib/topic-stats'
 import { currentSeasonFilter, getCurrentSeason, seasonLabel, safeIds } from '@/lib/season'
 import { fetchAll, fetchAllIn } from '@/lib/fetch-all'
@@ -339,7 +340,7 @@ export default async function AdminPage() {
                   <div key={a.id} className="flex items-center justify-between py-2 border-b border-[#f5f7f5]">
                     <div>
                       <p className="text-sm font-medium text-[#1a2e1a]">{(a.users as any)?.name}</p>
-                      <p className="text-xs text-[#7a9a7a]">{(a.variants as any)?.title}</p>
+                      <p className="text-xs text-[#7a9a7a]">{(a.variants as any)?.title}<ViolationTag violations={a.violations} annulled={a.annulled} /></p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-[#0ead69]">
