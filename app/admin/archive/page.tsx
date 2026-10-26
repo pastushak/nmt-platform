@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import AdminHeader from '@/components/admin/AdminHeader'
-import { CURRENT_SEASON, seasonLabel } from '@/lib/season'
+import { getCurrentSeason, seasonLabel } from '@/lib/season'
+import SeasonSwitcher from '@/components/admin/SeasonSwitcher'
 import { fetchAll, fetchAllIn } from '@/lib/fetch-all'
 
 export default async function ArchivePage() {
@@ -12,6 +13,8 @@ export default async function ArchivePage() {
 
   const { data: profile } = await supabase.rpc('get_my_profile')
   if (profile?.role !== 'teacher') redirect('/home')
+
+  const CURRENT_SEASON = await getCurrentSeason(supabase)
 
   // Учні минулих сезонів
   // Архів росте щороку — догружаємо сторінками (Supabase обрізає на 1000 рядках)
@@ -74,6 +77,8 @@ export default async function ArchivePage() {
             Учні з архіву не можуть увійти на платформу.
           </p>
         </div>
+
+        <SeasonSwitcher currentSeason={CURRENT_SEASON} />
 
         {!seasonList.length ? (
           <div className="card text-center py-16">

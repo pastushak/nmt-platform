@@ -8,9 +8,10 @@ import { seasonLabel } from '@/lib/season'
 interface Props {
   currentPage: 'home' | 'tests' | 'topics' | 'stats' | 'materials' | 'set'
   userName?: string
+  season?: string // поточний сезон (з requireStudentAccess)
 }
 
-export default function StudentHeader({ currentPage, userName }: Props) {
+export default function StudentHeader({ currentPage, userName, season }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const links = [
@@ -34,7 +35,7 @@ export default function StudentHeader({ currentPage, userName }: Props) {
           </div>
           <div>
             <div className="font-bold text-[#1a2e1a] text-sm leading-tight">НМТ Математика</div>
-            <div className="text-[#7a9a7a] text-xs">Підготовка {seasonLabel(null)}</div>
+            <div className="text-[#7a9a7a] text-xs">Підготовка {seasonLabel(season)}</div>
           </div>
         </Link>
 

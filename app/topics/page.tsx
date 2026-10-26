@@ -10,7 +10,7 @@ export default async function TopicsPage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  await requireStudentAccess(supabase, user.id)
+  const { currentSeason } = await requireStudentAccess(supabase, user.id)
 
   const { data: profile } = await supabase.rpc('get_my_profile')
   if (profile?.role === 'teacher') redirect('/admin')
@@ -56,7 +56,7 @@ export default async function TopicsPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f7f5] flex flex-col overflow-x-hidden">
-      <StudentHeader currentPage="topics" userName={profile?.name} />
+      <StudentHeader currentPage="topics" userName={profile?.name} season={currentSeason} />
 
       <main className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-8 flex-1">
         <div className="mb-6">

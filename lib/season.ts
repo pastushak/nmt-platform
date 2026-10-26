@@ -1,18 +1,30 @@
-// Поточний сезон підготовки.
-// НАСТУПНОГО РОКУ: змінити на '2028' + default у міграції (alter column season set default ...).
-export const CURRENT_SEASON = '2027'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+// Поточний сезон зберігається в БД (app_settings.current_season) і змінюється
+// кнопкою в адмінці: Архів сезонів → «Розпочати новий сезон».
+// Це значення — лише запасне, поки міграцію 20261026_season_setting.sql не запущено.
+export const FALLBACK_SEASON = '2027'
+
+/** Поточний сезон з бази */
+export async function getCurrentSeason(supabase: SupabaseClient): Promise<string> {
+  const { data, error } = await supabase.rpc('current_season')
+  if (error || typeof data !== 'string' || !data) return FALLBACK_SEASON
+  return data
+}
 
 export function seasonLabel(season: string | null | undefined): string {
-  return `НМТ-${season ?? CURRENT_SEASON}`
+  return season ? `НМТ-${season}` : 'НМТ'
 }
 
 /** Чи належить учень до поточного сезону (null вважаємо поточним, щоб нікого не заблокувати випадково) */
-export function isCurrentSeason(season: string | null | undefined): boolean {
-  return !season || season === CURRENT_SEASON
+export function isCurrentSeason(season: string | null | undefined, current: string): boolean {
+  return !season || season === current
 }
 
-/** Фільтр для Supabase: учні поточного сезону (включно з season = null) */
-export const CURRENT_SEASON_FILTER = `season.eq.${CURRENT_SEASON},season.is.null`
+/** Фільтр для Supabase .or(): учні поточного сезону (включно з season = null) */
+export function currentSeasonFilter(current: string): string {
+  return `season.eq.${current},season.is.null`
+}
 
 /** Порожній список id ламає .in() — підставляємо неіснуючий UUID */
 export function safeIds(ids: string[]): string[] {

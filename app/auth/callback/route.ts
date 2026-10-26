@@ -1,7 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { CURRENT_SEASON } from '@/lib/season'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
@@ -43,7 +42,6 @@ export async function GET(request: Request) {
           role: 'student',
           is_verified: false,
           is_active: true,
-          season: CURRENT_SEASON,
         })
         return NextResponse.redirect(`${origin}/setup-name`)
       }

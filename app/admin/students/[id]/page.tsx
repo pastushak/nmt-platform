@@ -4,7 +4,8 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import StudentDetailCharts from '@/components/admin/StudentDetailCharts'
 import DeleteAttemptButton from '@/components/admin/DeleteAttemptButton'
 import AdminHeader from '@/components/admin/AdminHeader'
-import { isCurrentSeason, seasonLabel } from '@/lib/season'
+import { getCurrentSeason, isCurrentSeason, seasonLabel } from '@/lib/season'
+import MoveToCurrentSeason from '@/components/admin/MoveToCurrentSeason'
 import { getLayout, maxScore } from '@/lib/variant-layout'
 import { fetchAllIn } from '@/lib/fetch-all'
 
@@ -31,6 +32,7 @@ export default async function StudentDetailPage({
   const { data: student } = await supabase
     .from('users').select('*').eq('id', params.id).single()
   if (!student) notFound()
+  const currentSeason = await getCurrentSeason(supabase)
 
   const { data: allAttempts } = await supabase
     .from('attempts')
@@ -132,11 +134,11 @@ export default async function StudentDetailPage({
                   {student.is_verified && <span className="text-[#0ead69]">✔</span>}
                   {!student.is_active && <span className="badge-locked">заблоковано</span>}
                   <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                    isCurrentSeason(student.season)
+                    isCurrentSeason(student.season, currentSeason)
                       ? 'bg-[#e8f5e9] text-[#2e7d32]'
                       : 'bg-[#e3f2fd] text-[#1565c0]'
                   }`}>
-                    {seasonLabel(student.season)}{isCurrentSeason(student.season) ? '' : ' · архів'}
+                    {seasonLabel(student.season)}{isCurrentSeason(student.season, currentSeason) ? '' : ' · архів'}
                   </span>
                 </div>
                 <p className="text-sm text-[#7a9a7a]">{student.email}</p>
@@ -152,6 +154,9 @@ export default async function StudentDetailPage({
               }
             </div>
           </div>
+          {!isCurrentSeason(student.season, currentSeason) && (
+            <MoveToCurrentSeason studentId={student.id} studentSeason={student.season} currentSeason={currentSeason} />
+          )}
         </div>
 
         {/* Тематичні тести */}

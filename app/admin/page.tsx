@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import AdminHeader from '@/components/admin/AdminHeader'
 import AdminDashboardCharts from '@/components/admin/AdminDashboardCharts'
 import { topicStats, pctColor, pctBar, type TopicAttemptRow } from '@/lib/topic-stats'
-import { CURRENT_SEASON_FILTER, seasonLabel, safeIds } from '@/lib/season'
+import { currentSeasonFilter, getCurrentSeason, seasonLabel, safeIds } from '@/lib/season'
 import { fetchAll, fetchAllIn } from '@/lib/fetch-all'
 
 export default async function AdminPage() {
@@ -18,10 +18,11 @@ export default async function AdminPage() {
 
   // --- Базова статистика (незалежні запити — паралельно) ---
   // Учні поточного сезону — уся статистика дашборду рахується тільки по них
+  const currentSeason = await getCurrentSeason(supabase)
   const [{ count: variantsCount }, seasonStudents] = await Promise.all([
     supabase.from('variants').select('*', { count: 'exact', head: true }),
     fetchAll<{ id: string }>((from, to) => supabase.from('users').select('id')
-      .eq('role', 'student').or(CURRENT_SEASON_FILTER).order('id').range(from, to)),
+      .eq('role', 'student').or(currentSeasonFilter(currentSeason)).order('id').range(from, to)),
   ])
   const studentIdList = (seasonStudents ?? []).map(s => s.id)
   const sIds = safeIds(studentIdList)
@@ -217,7 +218,7 @@ export default async function AdminPage() {
         <div>
           <h1 className="page-title mb-1">Дашборд</h1>
           <p className="text-sm text-[#7a9a7a]">
-            Поточний сезон: <span className="font-semibold text-[#1a2e1a]">{seasonLabel(null)}</span>
+            Поточний сезон: <span className="font-semibold text-[#1a2e1a]">{seasonLabel(currentSeason)}</span>
             {' · '}
             <Link href="/admin/archive" className="text-[#0ead69] font-semibold">Архів сезонів →</Link>
           </p>

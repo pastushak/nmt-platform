@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { MAX_EXPLAINS, MAX_EXPLAINS_PER_DAY, EXPLAIN_MODEL } from '@/lib/explain'
-import { isCurrentSeason } from '@/lib/season'
+import { getCurrentSeason, isCurrentSeason } from '@/lib/season'
 import { POINTS } from '@/lib/variant-layout'
 
 // Пояснення помилки. Усі дані (умова, правильна відповідь, відповідь учня)
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
   // Заблоковані та архівні учні не користуються поясненнями
   const { data: me } = await supabase.from('users').select('role, is_active, season').eq('id', user.id).single()
-  if (!me || (me.role === 'student' && (me.is_active === false || !isCurrentSeason(me.season)))) {
+  if (!me || (me.role === 'student' && (me.is_active === false || !isCurrentSeason(me.season, await getCurrentSeason(supabase))))) {
     return NextResponse.json({ error: 'Доступ закрито' }, { status: 403 })
   }
 

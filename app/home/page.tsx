@@ -11,7 +11,7 @@ export default async function HomePage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  await requireStudentAccess(supabase, user.id)
+  const { currentSeason } = await requireStudentAccess(supabase, user.id)
 
   // Профіль, спроби та лічильники — незалежні запити, виконуємо паралельно
   const [
@@ -71,14 +71,14 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#f5f7f5]">
-      <StudentHeader currentPage="home" userName={profile?.name} />
+      <StudentHeader currentPage="home" userName={profile?.name} season={currentSeason} />
 
       {/* Hero */}
       <div className="bg-gradient-to-br from-[#f0faf2] to-[#e8f5ff] border-b border-[#e8ede8]">
         <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="inline-flex items-center gap-2 bg-white border border-[#c8e6c9] rounded-full px-3 py-1 text-xs font-semibold text-[#2e7d32] mb-3">
             <span className="w-2 h-2 bg-[#0ead69] rounded-full"></span>
-            {seasonLabel(null)} · Математика
+            {seasonLabel(currentSeason)} · Математика
           </div>
           <h1 className="text-3xl font-bold text-[#1a2e1a] tracking-tight mb-1">
             Вітаємо, {firstName}! 👋

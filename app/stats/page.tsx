@@ -12,7 +12,7 @@ export default async function StatsPage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  await requireStudentAccess(supabase, user.id)
+  const { currentSeason } = await requireStudentAccess(supabase, user.id)
 
   // Профіль, власні спроби й спроби класу — паралельно
   const [{ data: profile }, { data: myAttempts }, { data: classAttempts }, { data: topicTests }] = await Promise.all([
@@ -120,7 +120,7 @@ export default async function StatsPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f7f5]">
-      <StudentHeader currentPage="stats" userName={profile?.name} />
+      <StudentHeader currentPage="stats" userName={profile?.name} season={currentSeason} />
 
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-6">
 

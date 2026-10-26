@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 import StudentActions from '@/components/admin/StudentActions'
 import AddStudentButton from '@/components/admin/AddStudentButton'
 import AdminHeader from '@/components/admin/AdminHeader'
-import { CURRENT_SEASON, CURRENT_SEASON_FILTER, seasonLabel } from '@/lib/season'
+import { currentSeasonFilter, getCurrentSeason, seasonLabel } from '@/lib/season'
 import { fetchAll, fetchAllIn } from '@/lib/fetch-all'
 
 export default async function StudentsPage({
@@ -12,12 +12,13 @@ export default async function StudentsPage({
 }: {
   searchParams: { season?: string }
 }) {
+  const supabase = createServerSupabaseClient()
+  const CURRENT_SEASON = await getCurrentSeason(supabase)
   const season = searchParams.season && searchParams.season !== CURRENT_SEASON
     ? searchParams.season
     : null // null = поточний сезон
   const isArchive = season !== null
 
-  const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
@@ -27,7 +28,7 @@ export default async function StudentsPage({
 
   const students = await fetchAll<any>((from, to) => {
     const q = supabase.from('users').select('*').eq('role', 'student')
-    return (isArchive ? q.eq('season', season) : q.or(CURRENT_SEASON_FILTER))
+    return (isArchive ? q.eq('season', season) : q.or(currentSeasonFilter(CURRENT_SEASON)))
       .order('name').order('id').range(from, to)
   })
 

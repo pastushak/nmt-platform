@@ -9,7 +9,7 @@ export default async function SetPage() {
   const supabase = createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
-  await requireStudentAccess(supabase, user.id)
+  const { currentSeason } = await requireStudentAccess(supabase, user.id)
 
   const { data: profile } = await supabase.rpc('get_my_profile')
   if (profile?.role === 'teacher') redirect('/admin')
@@ -51,7 +51,7 @@ export default async function SetPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f7f5] flex flex-col">
-      <StudentHeader currentPage="set" userName={profile?.name} />
+      <StudentHeader currentPage="set" userName={profile?.name} season={currentSeason} />
 
       <main className="max-w-2xl mx-auto w-full px-6 py-8 flex-1">
         <SetLauncher
